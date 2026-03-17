@@ -27,6 +27,9 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+echo 📦 Installing PM2 globally...
+call npm install -g pm2
+
 echo 🧰 Running bootstrap script...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0bootstrap.ps1"
 
