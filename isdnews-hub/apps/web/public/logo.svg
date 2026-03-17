@@ -1,0 +1,7 @@
+<svg width="320" height="80" viewBox="0 0 320 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2" y="2" width="76" height="76" rx="18" fill="#0f766e"/>
+  <path d="M20 24h40v8H20zM20 38h40v8H20zM20 52h28v8H20z" fill="#ecfeff"/>
+  <circle cx="56" cy="56" r="10" fill="#14b8a6"/>
+  <text x="94" y="36" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700">ISDNews Hub</text>
+  <text x="94" y="58" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="14">AI Internal Knowledge Feed</text>
+</svg>

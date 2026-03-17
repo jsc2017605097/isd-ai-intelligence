@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISD News Hub</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.svg" />
+  <style>
+    :root{--bg:#f3f4f6;--card:#ffffff;--text:#0b1220;--muted:#4b5563;--accent:#0f766e;--accent2:#134e4a;--line:#d1d5db}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1240px;margin:0 auto;padding:24px}
+    .hero{background:linear-gradient(120deg,#ffffff,#f0fdfa);border:1px solid var(--line);padding:20px;border-radius:20px;margin-bottom:16px}
+    h1{margin:0;font-size:34px;letter-spacing:-.02em} .sub{color:var(--muted);margin-top:4px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand-logo{height:46px;width:auto;display:block}
+    .controls{display:grid;grid-template-columns:1.35fr .8fr .9fr .8fr .9fr .8fr auto;gap:10px;margin-top:14px}
+    .search-wrap{position:relative}
+    .search-wrap input{width:100%;padding-right:54px;height:44px}
+    .search-icon-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:8px;border:none;background:#f0fdfa;color:#0f766e;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:inset 0 0 0 1px #ccfbf1}
+    .search-icon-btn:hover{background:#ccfbf1}
+    input,select,button{padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff}
+    button{cursor:pointer;background:var(--text);color:#fff;font-weight:600}
+    .search-icon-btn{background:#fff;color:#0f766e}
+    .btn-alt{background:#fff;color:var(--text)}
+    .btn-digest{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#0f766e,#115e59);color:#fff;border:none;box-shadow:0 6px 16px rgba(15,118,110,.24)}
+    .btn-digest:hover{filter:brightness(1.03)}
+    .btn-digest:disabled{opacity:.75;cursor:not-allowed;filter:none}
+    .stats{display:flex;gap:10px;margin:14px 0}
+    .pill{background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:13px;color:var(--muted)}
+    .topics{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .chip{padding:6px 10px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:12px;color:#0f766e;cursor:pointer}
+    #ttsState{margin:10px 0;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;display:none;font-size:13px;color:#374151}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;min-height:220px}
+    .tag{font-size:12px;color:var(--accent);font-weight:700}
+    .status-ok{display:inline-block;padding:3px 8px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11px;font-weight:700}
+    .status-raw{display:inline-block;padding:3px 8px;border-radius:999px;background:#f3f4f6;color:#374151;font-size:11px;font-weight:700}
+    .title{font-size:18px;line-height:1.4;font-weight:800;color:#0f172a;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .meta{color:#4b5563;font-size:13px}
+    .excerpt{font-size:14px;color:#1f2937;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .card-thumb{width:100%;height:160px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+    .actions{display:flex;gap:8px;margin-top:auto;align-items:center}
+    .icon-btn{width:38px;height:38px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;padding:0}
+    .icon-btn svg{width:18px;height:18px}
+    .icon-btn.speaking{background:#0f766e;color:#fff}
+    #digest{margin:12px 0;padding:14px;background:#ecfeff;border:1px solid #a5f3fc;border-radius:14px;white-space:pre-wrap;display:none}
+    .digest-skeleton{display:none;margin:12px 0;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px}
+    .sk-line{height:12px;border-radius:8px;background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 37%,#e5e7eb 63%);background-size:400% 100%;animation:shimmer 1.3s ease-in-out infinite;margin:10px 0}
+    .sk-line.lg{height:16px;width:70%}
+    .sk-line.md{width:92%}
+    .sk-line.sm{width:80%}
+    @keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
+    #voiceHelp{margin:12px 0;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;display:none;font-size:14px;line-height:1.6}
+    #detail{margin-top:20px;background:#fff;border:1px solid var(--line);padding:20px;border-radius:18px;display:none}
+    .detail-head{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start}
+    .detail-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .badge.meta{background:#f3f4f6;color:#374151}
+    .badge.team{background:#ecfeff;color:#155e75}
+    .detail-block{margin-top:14px;padding:16px;border:1px solid #cbd5e1;border-radius:12px;background:#ffffff}
+    .detail-block h3{margin:0 0 12px 0;font-size:15px;color:#0f172a;font-weight:800;display:flex;align-items:center;gap:8px}
+    .detail-content{line-height:1.9;font-size:16px;color:#0f172a;font-weight:500;white-space:normal}
+    .detail-content p{margin:0 0 14px 0}
+    .detail-content ul{margin:10px 0 14px 0;padding-left:20px}
+    .detail-content li{margin:8px 0}
+    .detail-content .hl{background:#fde68a;color:#111827;padding:2px 7px;border-radius:6px;font-weight:700}
+    .pager{display:flex;justify-content:center;gap:10px;margin:18px 0}
+    .source-link{color:var(--accent2);text-decoration:none}
+
+    .chat-fab{position:fixed;right:22px;bottom:22px;z-index:60;border:none;border-radius:999px;padding:12px 14px;background:linear-gradient(135deg,#0f766e,#115e59);color:#fff;box-shadow:0 10px 24px rgba(15,118,110,.35);display:flex;align-items:center;gap:8px}
+    .chat-panel{position:fixed;right:22px;bottom:84px;width:360px;max-width:calc(100vw - 24px);height:520px;max-height:70vh;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 16px 36px rgba(0,0,0,.18);z-index:70;display:none;flex-direction:column;overflow:hidden}
+    .chat-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);background:#f8fafc}
+    .chat-body{flex:1;overflow:auto;padding:12px;background:#f8fafc}
+    .chat-msg{max-width:88%;padding:12px 14px;border-radius:12px;margin-bottom:10px;white-space:pre-wrap;line-height:1.62;font-size:15px;font-weight:500}
+    .chat-msg.user{margin-left:auto;background:#0f766e;color:#ffffff;border-bottom-right-radius:4px}
+    .chat-msg.bot{margin-right:auto;background:#e0e7ff;color:#0f172a;border:1px solid #c7d2fe;border-bottom-left-radius:4px}
+    .chat-msg.thinking{display:inline-flex;align-items:center;gap:8px;background:#e5e7eb;color:#1f2937;border:1px solid #d1d5db;font-style:italic}
+    .thinking-dots{display:inline-flex;gap:3px}
+    .thinking-dots span{width:6px;height:6px;border-radius:999px;background:#6b7280;display:inline-block;animation:blink 1.2s infinite ease-in-out}
+    .thinking-dots span:nth-child(2){animation-delay:.15s}
+    .thinking-dots span:nth-child(3){animation-delay:.3s}
+    @keyframes blink{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
+    .chat-foot{padding:10px;border-top:1px solid var(--line);display:flex;gap:8px;background:#fff}
+    .chat-foot textarea{flex:1;min-height:44px;max-height:120px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:10px}
+    .chat-send{border:none;border-radius:10px;padding:0 14px;background:#111827;color:#fff}
+
+    @media(max-width:1080px){.grid{grid-template-columns:1fr 1fr}.controls{grid-template-columns:1fr 1fr 1fr 1fr}}
+    @media(max-width:760px){.grid{grid-template-columns:1fr}.controls{grid-template-columns:1fr 1fr}.controls button{grid-column:span 1}.chat-panel{right:10px;bottom:74px;width:calc(100vw - 20px)}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="brand">
+        <img class="brand-logo" src="/logo.svg" alt="ISDNews Hub logo" />
+      </div>
+      <div class="sub">Trang tổng hợp tin tức tiếng Việt • giao diện editorial cao cấp • đọc nhanh, lọc nhanh, nghe nhanh</div>
+      <div class="controls">
+        <div class="search-wrap">
+          <input id="q" placeholder="Tìm theo tiêu đề, nội dung, từ khóa..." />
+          <button id="search" class="search-icon-btn" aria-label="Tìm kiếm" title="Tìm kiếm">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.8" stroke="currentColor" stroke-width="2.2"/>
+              <path d="M20 20L16.3 16.3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <select id="team"><option value="">Tất cả team</option></select>
+        <select id="source"><option value="">Tất cả nguồn</option></select>
+        <select id="aiProcessed">
+          <option value="">AI: tất cả</option>
+          <option value="true" selected>AI: đã xử lý</option>
+          <option value="false">AI: chưa xử lý</option>
+        </select>
+        <select id="ttsMode">
+          <option value="browser">TTS: Browser</option>
+          <option value="google">TTS: Google (gTTS)</option>
+        </select>
+        <select id="digestRange" title="Khoảng thời gian bản tin">
+          <option value="1" selected>Bản tin: 1 ngày</option>
+          <option value="3">Bản tin: 3 ngày</option>
+          <option value="7">Bản tin: 7 ngày</option>
+          <option value="14">Bản tin: 14 ngày</option>
+          <option value="30">Bản tin: 30 ngày</option>
+        </select>
+        <button id="btnDigest" class="btn-digest" title="Tạo bản tin AI">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 3l2.2 4.8L19 10l-4.8 2.2L12 17l-2.2-4.8L5 10l4.8-2.2L12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M18.5 16.5l.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9.9-1.9Z" fill="currentColor"/>
+          </svg>
+          Tạo bản tin
+        </button>
+      </div>
+      <div class="stats">
+        <div class="pill" id="totalPill">Tổng bài: ...</div>
+        <div class="pill" id="pagePill">Trang: 1</div>
+      </div>
+      <div id="topics" class="topics"></div>
+    </div>
+
+    <div id="digestSkeleton" class="digest-skeleton" aria-hidden="true">
+      <div class="sk-line lg"></div>
+      <div class="sk-line md"></div>
+      <div class="sk-line md"></div>
+      <div class="sk-line sm"></div>
+      <div class="sk-line md"></div>
+      <div class="sk-line sm"></div>
+    </div>
+    <div id="digest"></div>
+    <div id="ttsState"></div>
+    <div id="voiceHelp">
+      ⚠️ Trình duyệt chưa có voice tiếng Việt (vi-VN). Cài thêm để nghe tiếng Việt chuẩn:<br/>
+      • Windows 11: <a class="source-link" target="_blank" href="https://support.microsoft.com/windows/manage-the-input-and-display-language-settings-in-windows-219f28b0-9881-cd4c-75ca-dba919c52321">Cài gói ngôn ngữ + Speech tiếng Việt</a><br/>
+      • macOS: <a class="source-link" target="_blank" href="https://support.apple.com/guide/mac-help/change-spoken-content-settings-on-mac-mchlc1cb3f57/mac">Thêm giọng nói tiếng Việt trong Spoken Content</a><br/>
+      • Chrome/Edge Linux thường thiếu voice vi-VN: nên dùng TTS local để ổn định.
+    </div>
+    <div id="list" class="grid"></div>
+    <div class="pager">
+      <button id="prev" class="btn-alt">← Trước</button>
+      <button id="next" class="btn-alt">Sau →</button>
+    </div>
+    <div id="detail"></div>
+  </div>
+
+  <button id="chatFab" class="chat-fab" title="Chat với AI">💬 Chat AI</button>
+  <div id="chatPanel" class="chat-panel" role="dialog" aria-label="Chat AI tự do">
+    <div class="chat-head">
+      <div><b>AI Assistant</b><div class="meta">Chat tự do với LLM local</div></div>
+      <div style="display:flex;gap:6px">
+        <button id="chatClear" class="btn-alt" style="padding:6px 10px">Clear</button>
+        <button id="chatClose" class="btn-alt" style="padding:6px 10px">✕</button>
+      </div>
+    </div>
+    <div id="chatBody" class="chat-body"></div>
+    <div class="chat-foot">
+      <textarea id="chatInput" placeholder="Nhập câu hỏi cho AI..."></textarea>
+      <button id="chatSend" class="chat-send">Gửi</button>
+    </div>
+  </div>
+
+  <script>
+    const api=`${location.protocol}//${location.hostname}:8787`;
+    const state={page:1,pageSize:12,total:0};
+    const list=document.getElementById('list');
+    const detail=document.getElementById('detail');
+    const qInput=document.getElementById('q');
+    const teamSel=document.getElementById('team');
+    const sourceSel=document.getElementById('source');
+    const aiSel=document.getElementById('aiProcessed');
+    const ttsModeSel=document.getElementById('ttsMode');
+    const digestRangeSel=document.getElementById('digestRange');
+    const digestBtn=document.getElementById('btnDigest');
+    const digestSkeleton=document.getElementById('digestSkeleton');
+    const topicsBox=document.getElementById('topics');
+    const voiceHelp=document.getElementById('voiceHelp');
+    const ttsState=document.getElementById('ttsState');
+
+    async function loadTeams(){
+      const teams=await fetch(api+'/api/teams').then(r=>r.json());
+      teams.forEach(t=>{const o=document.createElement('option');o.value=t.code;o.textContent=t.name;teamSel.appendChild(o);});
+    }
+    async function loadSources(){
+      const sources=await fetch(api+'/api/sources').then(r=>r.json());
+      sources.slice(0,150).forEach(s=>{const o=document.createElement('option');o.value=s.source;o.textContent=s.source;sourceSel.appendChild(o);});
+    }
+
+    async function loadTopics(){
+      const data = await fetch(api+'/api/topics/today').then(r=>r.json());
+      topicsBox.innerHTML='';
+      (data.topics||[]).slice(0,12).forEach(t=>{
+        const c=document.createElement('button');
+        c.className='chip';
+        c.textContent='#'+t.keyword;
+        c.onclick=()=>{document.getElementById('q').value=t.keyword; state.page=1; loadArticles();};
+        topicsBox.appendChild(c);
+      });
+    }
+
+    function qParams(){
+      const u=new URL(api+'/api/articles');
+      const q=document.getElementById('q').value.trim();
+      if(q)u.searchParams.set('q',q);
+      if(teamSel.value)u.searchParams.set('team',teamSel.value);
+      if(sourceSel.value)u.searchParams.set('source',sourceSel.value);
+      if(aiSel.value)u.searchParams.set('aiProcessed',aiSel.value);
+      u.searchParams.set('page',String(state.page));
+      u.searchParams.set('pageSize',String(state.pageSize));
+      return u;
+    }
+
+    function getDisplayTitle(a){
+      // Ưu tiên tiêu đề đã lưu trong DB (có thể đã được biên tập thủ công)
+      if (a.title && String(a.title).trim().length > 0) return a.title;
+      if(!a.is_ai_processed) return a.title;
+      const raw=(a.ai_content||'').split('\n').map(x=>x.trim()).filter(Boolean)[0]||'';
+      const cleaned=raw.replace(/^#+\s*/,'').replace(/^[-*]\s*/,'').replace(/[*_`]/g,'').trim();
+      return cleaned && cleaned.length>8 ? cleaned : a.title;
+    }
+
+    function esc(s=''){
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
+
+    function renderReadableContent(text=''){
+      const lines = String(text||'').split('\n').map(x=>x.trim());
+      const chunks = [];
+      let list = [];
+      const flushList = ()=>{
+        if(list.length){
+          chunks.push(`<ul>${list.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>`);
+          list=[];
+        }
+      };
+
+      for(const lnRaw of lines){
+        const ln = lnRaw.trim();
+        if(!ln){ flushList(); continue; }
+        if(/^[-•*]\s+/.test(ln) || /^\d+[\.)]\s+/.test(ln)){
+          list.push(ln.replace(/^[-•*]\s+/, '').replace(/^\d+[\.)]\s+/, ''));
+          continue;
+        }
+        flushList();
+        const headingLike = /^(tóm tắt|kết luận|đề xuất|rủi ro|lưu ý|chi tiết|nguồn|khuyến nghị)\s*[:：]?$/i.test(ln);
+        if(headingLike){
+          chunks.push(`<p><span class="hl">${esc(ln.replace(/[:：]$/,''))}</span></p>`);
+        } else {
+          chunks.push(`<p>${esc(ln)}</p>`);
+        }
+      }
+      flushList();
+      return chunks.join('') || '<p>Không có nội dung.</p>';
+    }
+
+    async function loadArticles(){
+      const data=await fetch(qParams()).then(r=>r.json());
+      state.total=data.total;
+      document.getElementById('totalPill').textContent='Tổng bài: '+data.total;
+      document.getElementById('pagePill').textContent='Trang: '+state.page;
+      list.innerHTML='';
+      if (!data.items || !data.items.length) {
+        list.innerHTML = `<div class='card' style='grid-column:1/-1'>Không có bài phù hợp bộ lọc hiện tại. Thử bấm "Xóa lọc".</div>`;
+        return;
+      }
+      data.items.forEach(a=>{
+        const excerpt=(a.ai_content||a.summary||'').slice(0,180);
+        const el=document.createElement('div'); el.className='card';
+        const status = a.is_ai_processed ? '<span class="status-ok">AI đã xử lý</span>' : '<span class="status-raw">Chưa AI xử lý</span>';
+        const thumb = a.thumbnail ? `<img class="card-thumb" src="${a.thumbnail}" alt="thumbnail" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : '';
+        el.innerHTML=`<div class="tag">${a.team_name||'Chung'} • ${a.source}</div>
+          <div>${status}</div>
+          <div class="title">${getDisplayTitle(a)}</div>
+          <div class="meta">${new Date(a.published_at).toLocaleString('vi-VN')}</div>
+          <div class="excerpt">${excerpt}</div>
+          ${thumb}
+          <div class="actions">
+            <button class="icon-btn" onclick="view(${a.id})" aria-label="Đọc" title="Đọc">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3H11v18H4.5A2.5 2.5 0 0 1 2 18.5v-13Z" stroke="currentColor" stroke-width="1.8"/><path d="M22 5.5A2.5 2.5 0 0 0 19.5 3H13v18h6.5a2.5 2.5 0 0 0 2.5-2.5v-13Z" stroke="currentColor" stroke-width="1.8"/></svg>
+            </button>
+            <button class="icon-btn btn-alt speak-btn" data-id="${a.id}" onclick="toggleSpeak(${a.id}, this)" aria-label="Nghe" title="Nghe">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 10v4h4l5 4V6l-5 4H5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M19 9a4 4 0 0 1 0 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+            <a class="source-link" href="${a.url}" target="_blank">Nguồn ↗</a>
+          </div>`;
+        list.appendChild(el);
+      })
+    }
+
+    window.view=async(id)=>{
+      const a=await fetch(api+'/api/articles/'+id).then(r=>r.json());
+      detail.style.display='block';
+      const status = a.is_ai_processed ? '<span class="status-ok">AI đã xử lý</span>' : '<span class="status-raw">Chưa AI xử lý</span>';
+      const detailThumb = a.thumbnail ? `<div style='margin-top:16px'><img src='${a.thumbnail}' alt='thumbnail' loading='lazy' referrerpolicy='no-referrer' style='width:100%;max-height:420px;object-fit:cover;border-radius:12px;border:1px solid #e5e7eb' onerror="this.style.display='none'"></div>` : '';
+      const contentHtml = renderReadableContent(a.ai_content||a.content||a.summary||'');
+      detail.innerHTML=`
+      <div class='detail-head'>
+        <div>
+          <h2 style='margin:0'>📰 ${esc(getDisplayTitle(a))}</h2>
+          <div class='detail-badges'>
+            <span class='badge team'>👥 ${esc(a.team_name||'Chung')}</span>
+            <span class='badge meta'>🏷️ ${esc(a.source||'N/A')}</span>
+            <span class='badge meta'>🕒 ${new Date(a.published_at).toLocaleString('vi-VN')}</span>
+          </div>
+        </div>
+        <div>${status}</div>
+      </div>
+
+      <div class='topics'>${(a.keywords||[]).map(k=>`<span class='chip'>#${esc(k.keyword)}</span>`).join('')}</div>
+
+      <div class='detail-block'>
+        <h3>📌 Nội dung chi tiết</h3>
+        <div class='detail-content'>${contentHtml}</div>
+      </div>
+
+      ${detailThumb}
+
+      <div class='detail-block'>
+        <h3>🔗 Bài liên quan</h3>
+        <ul>${(a.related||[]).map(x=>`<li>${esc(x.title)}</li>`).join('')||'<li>Đang cập nhật...</li>'}</ul>
+      </div>
+      `;
+      detail.scrollIntoView({behavior:'smooth'});
+    }
+
+    let voiceCache = [];
+    let audioPlayer = null;
+
+    function refreshVoices(){
+      voiceCache = speechSynthesis.getVoices() || [];
+      return voiceCache;
+    }
+
+    function pickVoiceByLang(lang){
+      const voices = voiceCache.length ? voiceCache : refreshVoices();
+      const target = (lang || '').toLowerCase();
+      if (!voices.length) return null;
+
+      if (target.startsWith('vi')) {
+        return voices.find(v => (v.lang||'').toLowerCase().startsWith('vi'))
+          || voices.find(v => /vietnam|việt|vietnamese/i.test((v.name||'')+' '+(v.lang||'')))
+          || null;
+      }
+
+      if (target.startsWith('en')) {
+        return voices.find(v => (v.lang||'').toLowerCase().startsWith('en')) || null;
+      }
+
+      return null;
+    }
+
+    function setTtsState(text, kind='info'){
+      ttsState.style.display='block';
+      ttsState.textContent=text;
+      ttsState.style.borderColor = kind==='error' ? '#fecaca' : (kind==='ok' ? '#bbf7d0' : '#e5e7eb');
+      ttsState.style.background = kind==='error' ? '#fef2f2' : (kind==='ok' ? '#f0fdf4' : '#fff');
+    }
+
+    function cleanForTTS(text=''){
+      return text
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/https?:\/\/\S+/g, ' ')
+        // bỏ ký tự markdown gây đọc lỗi nhưng GIỮ dấu câu để ngắt nhịp
+        .replace(/[_*`#~|<>\[\]{}]/g, ' ')
+        // chỉ lọc ký tự lạ, giữ chữ số/chữ cái/khoảng trắng và . , ; : ! ?
+        .replace(/[^\p{L}\p{N}\s\.,;:!?-]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    let currentSpeakId = null;
+    let currentSpeakBtn = null;
+    const playIcon = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 10v4h4l5 4V6l-5 4H5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M19 9a4 4 0 0 1 0 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+    const stopIcon = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>`;
+
+    function resetSpeakButton(){
+      if (!currentSpeakBtn) return;
+      currentSpeakBtn.classList.remove('speaking');
+      currentSpeakBtn.innerHTML = playIcon;
+      currentSpeakBtn.setAttribute('title','Nghe');
+      currentSpeakBtn.setAttribute('aria-label','Nghe');
+      currentSpeakBtn = null;
+      currentSpeakId = null;
+    }
+
+    function stopSpeak({silent=true}={}){
+      try { speechSynthesis.cancel(); } catch(_) {}
+      try {
+        if (audioPlayer) {
+          audioPlayer.pause();
+          audioPlayer.currentTime = 0;
+        }
+      } catch(_) {}
+      resetSpeakButton();
+      if (!silent) {
+        ttsState.style.display='none';
+      }
+    }
+
+    async function playGoogleTTS(text, lang='vi'){
+      setTtsState('Đang xử lý Google TTS...', 'info');
+      const resp = await fetch(api + '/api/tts/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang })
+      });
+      if (!resp.ok) throw new Error('Google TTS request failed');
+      const data = await resp.json();
+      if (!data.audioUrl) throw new Error('No audioUrl from Google TTS');
+
+      if (!audioPlayer) audioPlayer = new Audio();
+      audioPlayer.src = data.audioUrl;
+      audioPlayer.playbackRate = 1.25;
+      audioPlayer.onended = () => { setTtsState('Đọc xong.', 'ok'); resetSpeakButton(); };
+      await audioPlayer.play();
+      setTtsState('Đang phát bằng Google gTTS (speed nhanh hơn).', 'ok');
+    }
+
+    window.toggleSpeak=async(id, btn)=>{
+      try {
+        if (currentSpeakId === id) {
+          stopSpeak({silent:true});
+          return;
+        }
+
+        stopSpeak({silent:true});
+        currentSpeakId = id;
+        currentSpeakBtn = btn;
+        currentSpeakBtn.classList.add('speaking');
+        currentSpeakBtn.innerHTML = stopIcon;
+        currentSpeakBtn.setAttribute('title','Dừng nghe');
+        currentSpeakBtn.setAttribute('aria-label','Dừng nghe');
+
+        setTtsState('Đang chuẩn bị nội dung đọc...', 'info');
+        const t=await fetch(api+'/api/tts/'+id).then(r=>r.json());
+        const lang = t.lang || (t.is_ai_processed ? 'vi-VN' : 'en-US');
+        const cleaned = cleanForTTS((t.text||'').slice(0,5000));
+        const spokenText = cleaned;
+
+        if (ttsModeSel.value === 'google') {
+          const gLang = lang.startsWith('vi') ? 'vi' : 'en';
+          await playGoogleTTS(spokenText, gLang);
+          return;
+        }
+
+        const u=new SpeechSynthesisUtterance(spokenText);
+        u.lang=lang;
+        u.rate=1.0;
+
+        const voice = pickVoiceByLang(lang);
+        if (voice) u.voice = voice;
+
+        if (lang.startsWith('vi') && !voice) {
+          voiceHelp.style.display='block';
+          setTtsState('Không tìm thấy voice tiếng Việt trên trình duyệt. Vui lòng cài theo hướng dẫn bên dưới hoặc chuyển sang TTS: Google.', 'error');
+          resetSpeakButton();
+          return;
+        }
+        voiceHelp.style.display='none';
+
+        u.onstart = () => setTtsState(`Đang đọc bằng voice browser (${lang}, tốc độ normal/chậm).`, 'ok');
+        u.onend = () => { setTtsState('Đọc xong.', 'ok'); resetSpeakButton(); };
+        u.onerror = () => { setTtsState('Lỗi khi phát giọng đọc browser.', 'error'); resetSpeakButton(); };
+        speechSynthesis.speak(u);
+      } catch (e) {
+        setTtsState(`Lỗi TTS: ${e.message || e}`, 'error');
+        resetSpeakButton();
+      }
+    }
+
+    document.getElementById('search').onclick=()=>{state.page=1;loadArticles()};
+    qInput.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        state.page=1;
+        loadArticles();
+      }
+    });
+
+    [teamSel, sourceSel, aiSel].forEach(el => {
+      el.addEventListener('change', ()=>{ state.page=1; loadArticles(); });
+    });
+
+    document.getElementById('prev').onclick=()=>{if(state.page>1){state.page--;loadArticles();}};
+    document.getElementById('next').onclick=()=>{if(state.page*state.pageSize<state.total){state.page++;loadArticles();}};
+    digestBtn.onclick=async()=>{
+      const box=document.getElementById('digest');
+      const prevHtml = digestBtn.innerHTML;
+      try {
+        digestBtn.disabled = true;
+        digestBtn.innerHTML = 'Đang tạo...';
+        digestSkeleton.style.display='block';
+        box.style.display='none';
+
+        const days = digestRangeSel?.value || '1';
+        const qs = new URLSearchParams({ refresh: '1', rangeDays: String(days) });
+        const q = qInput.value.trim();
+        if (q) qs.set('q', q);
+        if (teamSel.value) qs.set('team', teamSel.value);
+        if (sourceSel.value) qs.set('source', sourceSel.value);
+        if (aiSel.value) qs.set('aiProcessed', aiSel.value);
+
+        const d=await fetch(api+`/api/digest/today?${qs.toString()}`).then(r=>r.json());
+        const header = d?.rangeDays && Number(d.rangeDays) > 1
+          ? `${d.title} (khoảng ${d.rangeDays} ngày)`
+          : d.title;
+        box.textContent=header+'\n\n'+d.content;
+        box.style.display='block';
+
+        const u=new SpeechSynthesisUtterance((header+'\n'+d.content).slice(0,3500));
+        u.lang='vi-VN'; u.rate=1;
+        stopSpeak({silent:true}); speechSynthesis.speak(u);
+      } catch (e) {
+        box.textContent = 'Không tạo được bản tin, vui lòng thử lại.';
+        box.style.display = 'block';
+      } finally {
+        digestSkeleton.style.display='none';
+        digestBtn.disabled = false;
+        digestBtn.innerHTML = prevHtml;
+      }
+    }
+
+    // Free chat panel (local LLM)
+    const chatFab = document.getElementById('chatFab');
+    const chatPanel = document.getElementById('chatPanel');
+    const chatClose = document.getElementById('chatClose');
+    const chatClear = document.getElementById('chatClear');
+    const chatBody = document.getElementById('chatBody');
+    const chatInput = document.getElementById('chatInput');
+    const chatSend = document.getElementById('chatSend');
+    let chatHistory = [];
+
+    function renderChat(){
+      chatBody.innerHTML = chatHistory.map(m => {
+        if (m.thinking) {
+          return `<div class="chat-msg bot thinking">AI đang suy nghĩ <span class="thinking-dots"><span></span><span></span><span></span></span></div>`;
+        }
+        return `<div class="chat-msg ${m.role==='user'?'user':'bot'}">${esc(m.content||'')}</div>`;
+      }).join('');
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function addChat(role, content){
+      chatHistory.push({ role, content: String(content||'') });
+      if (chatHistory.length > 24) chatHistory = chatHistory.slice(-24);
+      renderChat();
+    }
+
+    async function sendChat(){
+      const msg = chatInput.value.trim();
+      if (!msg) return;
+      chatInput.value='';
+      addChat('user', msg);
+      chatHistory.push({ role: 'assistant', content: '', thinking: true });
+      renderChat();
+
+      const aiIndex = chatHistory.length - 1;
+      const priorHistory = chatHistory.slice(0, aiIndex).map(x => ({ role: x.role, content: x.content }));
+
+      try {
+        const resp = await fetch(api + '/api/chat/stream', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ message: msg, history: priorHistory })
+        });
+
+        if (!resp.ok || !resp.body) {
+          let errTxt = '';
+          try { errTxt = JSON.stringify(await resp.json()); } catch (_) {}
+          throw new Error(errTxt || 'Chat stream lỗi');
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || '';
+
+          for (const ev of events) {
+            const line = ev.split('\n').find(l => l.startsWith('data: '));
+            if (!line) continue;
+            const payload = line.slice(6);
+            try {
+              const obj = JSON.parse(payload);
+              if (obj.error) throw new Error(obj.error);
+              if (obj.token) {
+                chatHistory[aiIndex].thinking = false;
+                chatHistory[aiIndex].content += obj.token;
+                renderChat();
+              }
+            } catch (_) {
+              // ignore malformed chunks
+            }
+          }
+        }
+
+        if (!chatHistory[aiIndex].content.trim()) {
+          chatHistory[aiIndex].thinking = false;
+          chatHistory[aiIndex].content = 'Không có phản hồi.';
+          renderChat();
+        }
+      } catch (e) {
+        chatHistory[aiIndex].thinking = false;
+        chatHistory[aiIndex].content = `Lỗi chat: ${e.message || e}`;
+        renderChat();
+      }
+    }
+
+    chatFab.onclick = () => {
+      chatPanel.style.display = chatPanel.style.display === 'flex' ? 'none' : 'flex';
+      if (!chatHistory.length) {
+        addChat('assistant', 'Xin chào! Mình là AI trợ lý trong Hub. Bạn muốn hỏi gì hôm nay?');
+      }
+    };
+    chatClose.onclick = () => chatPanel.style.display = 'none';
+    chatClear.onclick = () => { chatHistory = []; renderChat(); };
+    chatSend.onclick = sendChat;
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChat();
+      }
+    });
+
+    window.addEventListener('beforeunload', stopSpeak);
+    speechSynthesis.onvoiceschanged = () => refreshVoices();
+    refreshVoices();
+    stopSpeak({silent:true});
+
+    Promise.all([loadTeams(),loadSources(),loadTopics()]).then(loadArticles);
+  </script>
+</body>
+</html>

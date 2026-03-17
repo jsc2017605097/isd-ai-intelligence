@@ -1,0 +1,57 @@
+[
+  {
+    "source": "Tubefilter (YouTube)",
+    "url": "https://www.tubefilter.com/category/youtube/feed/",
+    "type": "rss",
+    "content_type": 2,
+    "team": "dev",
+    "fetch_interval": 3600,
+    "params": {}
+  },
+  {
+    "source": "feed",
+    "url": "https://feed.infoq.com/",
+    "type": "rss",
+    "content_type": 2,
+    "team": "dev",
+    "fetch_interval": 1800,
+    "params": {}
+  },
+  {
+    "source": "VnExpress Kinh Doanh",
+    "url": "https://vnexpress.net/kinh-doanh",
+    "type": "static",
+    "content_type": 1,
+    "team": "ba",
+    "fetch_interval": 7200,    "params": {
+      "prompt": "hãy lấy các url liên quan đến tin tức kinh tế, bitcoin, giá vàng, kinh tế vĩ mô thế giới, kinh tế việt nam, sau đó gửi lại cho tôi , yêu cầu dữ liệu trả về chỉ là 1 mảng các url, không được sai format như tôi yêu cầu"
+    }
+  },
+  {
+    "source": "CoinDesk RSS",
+    "url": "https://feeds.coindesk.com/coindesk-bitcoin-news",
+    "type": "rss",
+    "content_type": 1,
+    "team": "system",
+    "fetch_interval": 1800,
+    "params": {}
+  },
+  {
+    "source": "TechCrunch API",
+    "url": "https://api.example.com/articles",
+    "type": "api",
+    "content_type": 3,
+    "team": "dev",
+    "fetch_interval": 3600,
+    "params": {
+      "headers": {
+        "Authorization": "Bearer your_api_token_here",
+        "User-Agent": "ISDNews/1.0"
+      },
+      "query_params": {
+        "category": "technology",
+        "limit": 50
+      }
+    }
+  }
+]

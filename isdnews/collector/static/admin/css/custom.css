@@ -1,0 +1,38 @@
+.truncated-content {
+    position: relative;
+}
+
+.truncated-content span {
+    cursor: help;
+}
+
+.truncated-content span:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: 0;
+    top: 100%;
+    background: #fff;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+    min-width: 200px;
+    max-width: 400px;
+    white-space: pre-wrap;
+}
+
+#header #branding h1 {
+    padding-left: 0;
+}
+
+#header #branding h1::before {
+    content: '';
+    display: inline-block;
+    width: 100px;
+    height: 32px;
+    margin-right: 10px;
+    vertical-align: middle;
+    background: url('../images/logo.png') no-repeat center;
+    background-size: contain;
+}

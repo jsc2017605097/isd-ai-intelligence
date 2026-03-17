@@ -1,0 +1,14 @@
+Django==5.2.1
+celery
+django-celery-beat
+redis
+gunicorn
+psycopg2-binary  # PostgreSQL adapter
+python-dotenv
+whitenoise  # for serving static files
+django-cors-headers
+aiohttp>=3.8.0
+feedparser>=6.0.0
+python-dateutil>=2.8.0
+beautifulsoup4
+certifi
