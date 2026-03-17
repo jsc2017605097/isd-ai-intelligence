@@ -1,0 +1,32 @@
+# Local environment files
+.env
+*.env
+.env.local
+
+# Virtual environments
+venv/
+ENV/
+.venv/
+
+# Node dependencies
+node_modules/
+dist/
+build/
+
+# Databases
+*.sqlite3
+db.sqlite3-journal
+
+# Logs
+logs/*.log
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Distribution specific
+isdnews-hub/data/tts/*.mp3
