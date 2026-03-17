@@ -98,18 +98,18 @@ def start():
         return
 
     if NEWS_DIR.exists():
-        python_path = NEWS_DIR / ("Scripts" if is_windows else "bin") / "python"
+        python_exe = NEWS_DIR / ("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
         
-        # Trên Windows, PM2 chạy lệnh trực tiếp từ venv python, không cần 'source activate'
-        worker_cmd = f'"{python_path}" manage.py celery worker'
-        beat_cmd = f'"{python_path}" manage.py celery beat'
-        
-        if not is_windows:
-            worker_cmd = f"source venv/bin/activate && {worker_cmd}"
-            beat_cmd = f"source venv/bin/activate && {beat_cmd}"
-
-        run_cmd(f'pm2 start "{worker_cmd}" --name isd-worker', cwd=NEWS_DIR)
-        run_cmd(f'pm2 start "{beat_cmd}" --name isd-beat', cwd=NEWS_DIR)
+        if is_windows:
+            # Cách gọi PM2 an toàn nhất trên Windows với đường dẫn có dấu cách
+            # Format: pm2 start script.py --name name --interpreter "path/to/python" -- args
+            run_cmd(f'pm2 start manage.py --name isd-worker --interpreter "{python_exe}" -- celery worker', cwd=NEWS_DIR)
+            run_cmd(f'pm2 start manage.py --name isd-beat --interpreter "{python_exe}" -- celery beat', cwd=NEWS_DIR)
+        else:
+            worker_cmd = f"source venv/bin/activate && python manage.py celery worker"
+            beat_cmd = f"source venv/bin/activate && python manage.py celery beat"
+            run_cmd(f'pm2 start "{worker_cmd}" --name isd-worker', cwd=NEWS_DIR)
+            run_cmd(f'pm2 start "{beat_cmd}" --name isd-beat', cwd=NEWS_DIR)
         
     if HUB_DIR.exists():
         # Node.js thường chạy trực tiếp được
