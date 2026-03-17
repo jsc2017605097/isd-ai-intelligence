@@ -97,43 +97,56 @@ def start():
         print("👉 Vui lòng cài đặt PM2 bằng lệnh: npm install -g pm2")
         return
 
-    if NEWS_DIR.exists():
-        python_exe = NEWS_DIR / ("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
-        
-        if is_windows:
-            # Tạo file .bat làm wrapper bền bỉ hơn, sử dụng pushd để tránh lỗi đường dẫn
-            worker_bat = NEWS_DIR / "isd-worker.bat"
-            beat_bat = NEWS_DIR / "isd-beat.bat"
-            
-            # Chuyển đổi đường dẫn sang dạng chuỗi chuẩn Windows (backslashes)
-            news_dir_win = str(NEWS_DIR).replace("/", "\\")
-            
-            worker_content = f'@echo off\npushd "{news_dir_win}"\n"venv\\Scripts\\python.exe" manage.py celery worker %*\npopd'
-            beat_content = f'@echo off\npushd "{news_dir_win}"\n"venv\\Scripts\\python.exe" manage.py celery beat %*\npopd'
-            
-            worker_bat.write_text(worker_content)
-            beat_bat.write_text(beat_content)
-            
-            run_cmd(f'pm2 start isd-worker.bat --name isd-worker --interpreter none', cwd=NEWS_DIR)
-            run_cmd(f'pm2 start isd-beat.bat --name isd-beat --interpreter none', cwd=NEWS_DIR)
-        else:
-            worker_cmd = f"source venv/bin/activate && python manage.py celery worker"
-            beat_cmd = f"source venv/bin/activate && python manage.py celery beat"
-            run_cmd(f'pm2 start "{worker_cmd}" --name isd-worker', cwd=NEWS_DIR)
-            run_cmd(f'pm2 start "{beat_cmd}" --name isd-beat', cwd=NEWS_DIR)
-        
-    if HUB_DIR.exists():
-        if is_windows:
-            api_bat = HUB_DIR / "isd-api.bat"
-            hub_dir_win = str(HUB_DIR).replace("/", "\\")
-            api_content = f'@echo off\npushd "{hub_dir_win}"\nnode "apps\\api\\server.js" %*\npopd'
-            api_bat.write_text(api_content)
-            run_cmd(f'pm2 start isd-api.bat --name isd-api --interpreter none', cwd=HUB_DIR)
-        else:
-            run_cmd("pm2 start apps/api/server.js --name isd-api", cwd=HUB_DIR)
+    # Tạo file ecosystem.config.js để quản lý tập trung và tránh lỗi cửa sổ nhấp nháy
+    ecosystem_path = BASE_DIR / "ecosystem.config.js"
     
+    news_dir_esc = str(NEWS_DIR).replace("\\", "\\\\")
+    hub_dir_esc = str(HUB_DIR).replace("\\", "\\\\")
+    
+    if is_windows:
+        py_path = f"{news_dir_esc}\\\\venv\\\\Scripts\\\\python.exe"
+    else:
+        py_path = f"{news_dir_esc}/venv/bin/python"
+
+    ecosystem_content = f"""
+module.exports = {{
+  apps : [
+    {{
+      name: 'isd-worker',
+      script: 'manage.py',
+      cwd: '{news_dir_esc}',
+      interpreter: '{py_path}',
+      args: 'celery worker',
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G'
+    }},
+    {{
+      name: 'isd-beat',
+      script: 'manage.py',
+      cwd: '{news_dir_esc}',
+      interpreter: '{py_path}',
+      args: 'celery beat',
+      autorestart: true,
+      watch: false
+    }},
+    {{
+      name: 'isd-api',
+      script: 'apps/api/server.js',
+      cwd: '{hub_dir_esc}',
+      autorestart: true,
+      watch: false
+    }}
+  ]
+}};
+"""
+    ecosystem_path.write_text(ecosystem_content, encoding='utf-8')
+
+    # Chạy bằng ecosystem file
+    run_cmd(f"pm2 start ecosystem.config.js", cwd=BASE_DIR)
     run_cmd("pm2 save")
-    print("\n✅ Tất cả dịch vụ đã được khởi động trong PM2!")
+    print("\n✅ Đã khởi động hệ thống qua Ecosystem! Dùng 'pm2 status' để kiểm tra.")
+    print("⚠️  Lưu ý: Nếu isd-worker báo lỗi, hãy đảm bảo sếp đã cài và bật Redis trên Windows.")
 
 def stop():
     print("⏹️ Đang dừng các dịch vụ ISD...")
