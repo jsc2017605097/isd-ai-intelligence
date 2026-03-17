@@ -36,7 +36,13 @@ def install():
     # Setup News
     if NEWS_DIR.exists():
         print(f"📦 Cấu hình Pipeline (isdnews) sử dụng {py_cmd}...")
-        # Xóa venv cũ nếu có để tránh lỗi hụt path
+        
+        # Đảm bảo thư mục logs tồn tại để tránh lỗi Django logging
+        logs_dir = NEWS_DIR / "logs"
+        if not logs_dir.exists():
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            print("📁 Đã tạo thư mục logs.")
+
         venv_dir = NEWS_DIR / "venv"
         run_cmd(f"{py_cmd} -m venv venv", cwd=NEWS_DIR)
         
