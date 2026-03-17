@@ -20,26 +20,34 @@ def run_cmd(cmd, cwd=None, shell=True):
 
 def install():
     print("🚀 Đang cài đặt hệ sinh thái ISD...")
+    is_windows = sys.platform.startswith('win')
     
     # Setup News
     if NEWS_DIR.exists():
         print("📦 Cấu hình Pipeline (isdnews)...")
-        run_cmd("python3 -m venv venv", cwd=NEWS_DIR)
-        run_cmd("./venv/bin/pip install -r requirements.txt", cwd=NEWS_DIR)
+        run_cmd("python -m venv venv" if is_windows else "python3 -m venv venv", cwd=NEWS_DIR)
+        
+        pip_path = NEWS_DIR / ("Scripts" if is_windows else "bin") / "pip"
+        python_path = NEWS_DIR / ("Scripts" if is_windows else "bin") / "python"
+        
+        run_cmd(f'"{pip_path}" install -r requirements.txt', cwd=NEWS_DIR)
+        
         if not (NEWS_DIR / ".env").exists():
             if (NEWS_DIR / ".env.example").exists():
-                run_cmd("cp .env.example .env", cwd=NEWS_DIR)
+                import shutil
+                shutil.copy(NEWS_DIR / ".env.example", NEWS_DIR / ".env")
             else:
                 (NEWS_DIR / ".env").write_text("DEBUG=False\nAI_PROVIDER=ollama\nOLLAMA_BASE_URL=http://127.0.0.1:11434\n")
-        run_cmd("./venv/bin/python manage.py migrate", cwd=NEWS_DIR)
+        
+        run_cmd(f'"{python_path}" manage.py migrate', cwd=NEWS_DIR)
     
     # Setup Hub
     if HUB_DIR.exists():
         print("📦 Cấu hình Dashboard (isdnews-hub)...")
         run_cmd("npm install", cwd=HUB_DIR)
         if not (HUB_DIR / ".env").exists():
-            db_path = NEWS_DIR / "db.sqlite3"
-            hub_db = HUB_DIR / "data" / "hub.sqlite3"
+            db_path = str(NEWS_DIR / "db.sqlite3").replace("\\", "/")
+            hub_db = str(HUB_DIR / "data" / "hub.sqlite3").replace("\\", "/")
             env_content = f"PORT=8787\nSOURCE_DB_PATH={db_path}\nHUB_DB_PATH={hub_db}\nLLM_BASE_URL=http://127.0.0.1:11434\n"
             (HUB_DIR / ".env").write_text(env_content)
 
