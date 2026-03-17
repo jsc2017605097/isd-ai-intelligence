@@ -1,31 +1,28 @@
-# ISD Ecosystem Windows Bootstrap
-# This script sets up the 'isd' command for PowerShell.
-
+# ISD Ecosystem Windows Bootstrap (Refined)
 $ErrorActionPreference = 'Stop'
 
-Write-Host "🧰 Installing ISD CLI for Windows..." -ForegroundColor Blue
-
-# Get the absolute path of isd.py in the current directory
+# Get directory of this script
 $ScriptDir = $PSScriptRoot
 if (-not $ScriptDir) { $ScriptDir = Get-Location }
 $CliSource = Join-Path $ScriptDir "isd.py"
 
-if (-not (Test-Path $CliSource)) {
-    Write-Host "❌ Error: isd.py not found in this folder!" -ForegroundColor Red
-    exit
+# Create a local bin folder in user profile if it doesn't exist
+$BinPath = Join-Path $env:USERPROFILE ".isd\bin"
+if (-not (Test-Path $BinPath)) { 
+    New-Item -ItemType Directory -Path $BinPath -Force | Out-Null
 }
 
-# Create a function in the current PowerShell profile or just a simple alias for the session
-# For a permanent installation, we suggest adding it to the Path or Profile.
-# Here we'll create a small wrapper cmd file in a common path or just advise the user.
-
-$BinPath = Join-Path $env:USERPROFILE "bin"
-if (-not (Test-Path $BinPath)) { New-Item -ItemType Directory -Path $BinPath }
-
+# Create isd.bat wrapper
 $BatchFile = Join-Path $BinPath "isd.bat"
 "@echo off`npython `"$CliSource`" %*" | Out-File -FilePath $BatchFile -Encoding ascii
 
-Write-Host "✅ ISD CLI wrapper created at $BatchFile" -ForegroundColor Green
-Write-Host "👉 Make sure '$BinPath' is in your System PATH." -ForegroundColor Yellow
-Write-Host "After that, you can use the command 'isd' anywhere." -ForegroundColor Blue
-Write-Host "Next step: Run 'isd install'" -ForegroundColor Blue
+# Add to User PATH permanently if not already there
+$CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($CurrentPath -notlike "*$BinPath*") {
+    Write-Host "➕ Adding $BinPath to User PATH..." -ForegroundColor Cyan
+    [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$BinPath", "User")
+    $env:Path += ";$BinPath"
+}
+
+Write-Host "✅ ISD CLI wrapper created at: $BatchFile" -ForegroundColor Green
+Write-Host "🚀 Installation successful!" -ForegroundColor Green
