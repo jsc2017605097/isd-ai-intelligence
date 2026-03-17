@@ -22,30 +22,53 @@ def install():
     print("🚀 Đang cài đặt hệ sinh thái ISD...")
     is_windows = sys.platform.startswith('win')
     
+    # Tìm lệnh python phù hợp
+    python_cmds = ["python", "py", "python3"]
+    py_cmd = "python"
+    for cmd in python_cmds:
+        try:
+            subprocess.run(f"{cmd} --version", shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            py_cmd = cmd
+            break
+        except:
+            continue
+
     # Setup News
     if NEWS_DIR.exists():
-        print("📦 Cấu hình Pipeline (isdnews)...")
-        run_cmd("python -m venv venv" if is_windows else "python3 -m venv venv", cwd=NEWS_DIR)
+        print(f"📦 Cấu hình Pipeline (isdnews) sử dụng {py_cmd}...")
+        # Xóa venv cũ nếu có để tránh lỗi hụt path
+        venv_dir = NEWS_DIR / "venv"
+        run_cmd(f"{py_cmd} -m venv venv", cwd=NEWS_DIR)
         
-        pip_path = NEWS_DIR / ("Scripts" if is_windows else "bin") / "pip"
-        python_path = NEWS_DIR / ("Scripts" if is_windows else "bin") / "python"
+        # Đường dẫn thực thi (Windows dùng Scripts, Linux dùng bin)
+        if is_windows:
+            pip_path = venv_dir / "Scripts" / "pip.exe"
+            python_path = venv_dir / "Scripts" / "python.exe"
+        else:
+            pip_path = venv_dir / "bin" / "pip"
+            python_path = venv_dir / "bin" / "python"
         
+        # Chạy lệnh với dấu ngoặc kép bọc quanh đường dẫn để xử lý khoảng trắng
+        print("📥 Đang cài đặt thư viện Python...")
         run_cmd(f'"{pip_path}" install -r requirements.txt', cwd=NEWS_DIR)
         
         if not (NEWS_DIR / ".env").exists():
             if (NEWS_DIR / ".env.example").exists():
                 import shutil
-                shutil.copy(NEWS_DIR / ".env.example", NEWS_DIR / ".env")
+                shutil.copy(str(NEWS_DIR / ".env.example"), str(NEWS_DIR / ".env"))
             else:
                 (NEWS_DIR / ".env").write_text("DEBUG=False\nAI_PROVIDER=ollama\nOLLAMA_BASE_URL=http://127.0.0.1:11434\n")
         
+        print("🗄️ Đang khởi tạo Database...")
         run_cmd(f'"{python_path}" manage.py migrate', cwd=NEWS_DIR)
     
     # Setup Hub
     if HUB_DIR.exists():
         print("📦 Cấu hình Dashboard (isdnews-hub)...")
+        # Kiểm tra npm
         run_cmd("npm install", cwd=HUB_DIR)
         if not (HUB_DIR / ".env").exists():
+            # Đồng bộ đường dẫn DB (dùng đường dẫn tuyệt đối đã bọc ngoặc)
             db_path = str(NEWS_DIR / "db.sqlite3").replace("\\", "/")
             hub_db = str(HUB_DIR / "data" / "hub.sqlite3").replace("\\", "/")
             env_content = f"PORT=8787\nSOURCE_DB_PATH={db_path}\nHUB_DB_PATH={hub_db}\nLLM_BASE_URL=http://127.0.0.1:11434\n"
