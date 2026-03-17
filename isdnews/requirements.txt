@@ -7,3 +7,6 @@ celery
 redis>=4.0.0
 django-celery-beat
 python-dotenv
+certifi
+playwright
+asgiref

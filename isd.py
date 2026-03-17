@@ -58,6 +58,9 @@ def install():
         print("📥 Đang cài đặt thư viện Python...")
         run_cmd(f'"{pip_path}" install -r requirements.txt', cwd=NEWS_DIR)
         
+        print("🎭 Đang cài đặt Playwright Browser...")
+        run_cmd(f'"{python_path}" -m playwright install chromium', cwd=NEWS_DIR)
+        
         if not (NEWS_DIR / ".env").exists():
             if (NEWS_DIR / ".env.example").exists():
                 import shutil
