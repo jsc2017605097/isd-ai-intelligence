@@ -87,12 +87,36 @@ def install():
 
 def start():
     print("▶️ Đang khởi động các dịch vụ ISD...")
+    is_windows = sys.platform.startswith('win')
+    
+    # Kiểm tra PM2
+    try:
+        subprocess.run("pm2 --version", shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except:
+        print("❌ Lỗi: Không tìm thấy lệnh 'pm2'.")
+        print("👉 Vui lòng cài đặt PM2 bằng lệnh: npm install -g pm2")
+        return
+
     if NEWS_DIR.exists():
-        run_cmd(f"pm2 start \"source {NEWS_DIR}/venv/bin/activate && python manage.py celery worker\" --name isd-worker", cwd=NEWS_DIR)
-        run_cmd(f"pm2 start \"source {NEWS_DIR}/venv/bin/activate && python manage.py celery beat\" --name isd-beat", cwd=NEWS_DIR)
+        python_path = NEWS_DIR / ("Scripts" if is_windows else "bin") / "python"
+        
+        # Trên Windows, PM2 chạy lệnh trực tiếp từ venv python, không cần 'source activate'
+        worker_cmd = f'"{python_path}" manage.py celery worker'
+        beat_cmd = f'"{python_path}" manage.py celery beat'
+        
+        if not is_windows:
+            worker_cmd = f"source venv/bin/activate && {worker_cmd}"
+            beat_cmd = f"source venv/bin/activate && {beat_cmd}"
+
+        run_cmd(f'pm2 start "{worker_cmd}" --name isd-worker', cwd=NEWS_DIR)
+        run_cmd(f'pm2 start "{beat_cmd}" --name isd-beat', cwd=NEWS_DIR)
+        
     if HUB_DIR.exists():
-        run_cmd(f"pm2 start apps/api/server.js --name isd-api", cwd=HUB_DIR)
+        # Node.js thường chạy trực tiếp được
+        run_cmd("pm2 start apps/api/server.js --name isd-api", cwd=HUB_DIR)
+    
     run_cmd("pm2 save")
+    print("\n✅ Tất cả dịch vụ đã được khởi động trong PM2!")
 
 def stop():
     print("⏹️ Đang dừng các dịch vụ ISD...")
@@ -100,7 +124,9 @@ def stop():
 
 def restart():
     print("🔄 Đang khởi động lại các dịch vụ ISD...")
-    run_cmd("pm2 restart isd-worker isd-beat isd-api || true")
+    # Tương tự start, cần đảm bảo đường dẫn đúng nếu restart môi trường
+    stop()
+    start()
 
 def status():
     run_cmd("pm2 list | grep isd || echo 'Chưa có dịch vụ nào đang chạy.'")
