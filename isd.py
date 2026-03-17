@@ -101,10 +101,15 @@ def start():
         python_exe = NEWS_DIR / ("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
         
         if is_windows:
-            # Cách gọi PM2 an toàn nhất trên Windows với đường dẫn có dấu cách
-            # Format: pm2 start script.py --name name --interpreter "path/to/python" -- args
-            run_cmd(f'pm2 start manage.py --name isd-worker --interpreter "{python_exe}" -- celery worker', cwd=NEWS_DIR)
-            run_cmd(f'pm2 start manage.py --name isd-beat --interpreter "{python_exe}" -- celery beat', cwd=NEWS_DIR)
+            # Tạo file .bat làm wrapper để tránh lỗi đường dẫn/interpreter của PM2 trên Windows
+            worker_bat = NEWS_DIR / "isd-worker.bat"
+            beat_bat = NEWS_DIR / "isd-beat.bat"
+            
+            worker_bat.write_text(f'@echo off\n"{python_exe}" "{NEWS_DIR / "manage.py"}" celery worker %*')
+            beat_bat.write_text(f'@echo off\n"{python_exe}" "{NEWS_DIR / "manage.py"}" celery beat %*')
+            
+            run_cmd(f'pm2 start isd-worker.bat --name isd-worker', cwd=NEWS_DIR)
+            run_cmd(f'pm2 start isd-beat.bat --name isd-beat', cwd=NEWS_DIR)
         else:
             worker_cmd = f"source venv/bin/activate && python manage.py celery worker"
             beat_cmd = f"source venv/bin/activate && python manage.py celery beat"
@@ -112,8 +117,12 @@ def start():
             run_cmd(f'pm2 start "{beat_cmd}" --name isd-beat', cwd=NEWS_DIR)
         
     if HUB_DIR.exists():
-        # Node.js thường chạy trực tiếp được
-        run_cmd("pm2 start apps/api/server.js --name isd-api", cwd=HUB_DIR)
+        if is_windows:
+            api_bat = HUB_DIR / "isd-api.bat"
+            api_bat.write_text(f'@echo off\nnode "{HUB_DIR / "apps" / "api" / "server.js"}" %*')
+            run_cmd(f'pm2 start isd-api.bat --name isd-api', cwd=HUB_DIR)
+        else:
+            run_cmd("pm2 start apps/api/server.js --name isd-api", cwd=HUB_DIR)
     
     run_cmd("pm2 save")
     print("\n✅ Tất cả dịch vụ đã được khởi động trong PM2!")
