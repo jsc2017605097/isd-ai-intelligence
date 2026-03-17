@@ -101,14 +101,19 @@ def start():
         python_exe = NEWS_DIR / ("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
         
         if is_windows:
-            # Tạo file .bat làm wrapper để tránh lỗi đường dẫn/interpreter của PM2 trên Windows
+            # Tạo file .bat làm wrapper bền bỉ hơn, sử dụng pushd để tránh lỗi đường dẫn
             worker_bat = NEWS_DIR / "isd-worker.bat"
             beat_bat = NEWS_DIR / "isd-beat.bat"
             
-            worker_bat.write_text(f'@echo off\n"{python_exe}" "{NEWS_DIR / "manage.py"}" celery worker %*')
-            beat_bat.write_text(f'@echo off\n"{python_exe}" "{NEWS_DIR / "manage.py"}" celery beat %*')
+            # Chuyển đổi đường dẫn sang dạng chuỗi chuẩn Windows (backslashes)
+            news_dir_win = str(NEWS_DIR).replace("/", "\\")
             
-            # Sử dụng --interpreter none để PM2 không dùng Node.js chạy file .bat
+            worker_content = f'@echo off\npushd "{news_dir_win}"\n"venv\\Scripts\\python.exe" manage.py celery worker %*\npopd'
+            beat_content = f'@echo off\npushd "{news_dir_win}"\n"venv\\Scripts\\python.exe" manage.py celery beat %*\npopd'
+            
+            worker_bat.write_text(worker_content)
+            beat_bat.write_text(beat_content)
+            
             run_cmd(f'pm2 start isd-worker.bat --name isd-worker --interpreter none', cwd=NEWS_DIR)
             run_cmd(f'pm2 start isd-beat.bat --name isd-beat --interpreter none', cwd=NEWS_DIR)
         else:
@@ -120,7 +125,9 @@ def start():
     if HUB_DIR.exists():
         if is_windows:
             api_bat = HUB_DIR / "isd-api.bat"
-            api_bat.write_text(f'@echo off\nnode "{HUB_DIR / "apps" / "api" / "server.js"}" %*')
+            hub_dir_win = str(HUB_DIR).replace("/", "\\")
+            api_content = f'@echo off\npushd "{hub_dir_win}"\nnode "apps\\api\\server.js" %*\npopd'
+            api_bat.write_text(api_content)
             run_cmd(f'pm2 start isd-api.bat --name isd-api --interpreter none', cwd=HUB_DIR)
         else:
             run_cmd("pm2 start apps/api/server.js --name isd-api", cwd=HUB_DIR)
