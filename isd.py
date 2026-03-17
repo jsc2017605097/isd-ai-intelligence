@@ -108,8 +108,9 @@ def start():
             worker_bat.write_text(f'@echo off\n"{python_exe}" "{NEWS_DIR / "manage.py"}" celery worker %*')
             beat_bat.write_text(f'@echo off\n"{python_exe}" "{NEWS_DIR / "manage.py"}" celery beat %*')
             
-            run_cmd(f'pm2 start isd-worker.bat --name isd-worker', cwd=NEWS_DIR)
-            run_cmd(f'pm2 start isd-beat.bat --name isd-beat', cwd=NEWS_DIR)
+            # Sử dụng --interpreter none để PM2 không dùng Node.js chạy file .bat
+            run_cmd(f'pm2 start isd-worker.bat --name isd-worker --interpreter none', cwd=NEWS_DIR)
+            run_cmd(f'pm2 start isd-beat.bat --name isd-beat --interpreter none', cwd=NEWS_DIR)
         else:
             worker_cmd = f"source venv/bin/activate && python manage.py celery worker"
             beat_cmd = f"source venv/bin/activate && python manage.py celery beat"
@@ -120,7 +121,7 @@ def start():
         if is_windows:
             api_bat = HUB_DIR / "isd-api.bat"
             api_bat.write_text(f'@echo off\nnode "{HUB_DIR / "apps" / "api" / "server.js"}" %*')
-            run_cmd(f'pm2 start isd-api.bat --name isd-api', cwd=HUB_DIR)
+            run_cmd(f'pm2 start isd-api.bat --name isd-api --interpreter none', cwd=HUB_DIR)
         else:
             run_cmd("pm2 start apps/api/server.js --name isd-api", cwd=HUB_DIR)
     
