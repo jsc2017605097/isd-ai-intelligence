@@ -276,7 +276,7 @@ def install():
                 s_url = input(f"  RSS URL [Enter to finish]: ").strip()
                 if not s_url: break
                 s_name = input(f"  Source Name: ").strip()
-                run_django_script(f"from collector.models import Team, Source; team=Team.objects.get(code='{t_code}'); Source.objects.get_or_create(url='{s_url}', defaults={{'source': '{s_name}', 'type': 'rss', 'team': team, 'is_active': True}})")
+                run_django_script(f"from collector.models import Team, Source; team=Team.objects.get(code='{t_code}'); Source.objects.get_or_create(url='{s_url}', defaults={{'source': '{s_name}', 'type': 'rss', 'team': team, 'is_active': True, 'force_collect': True}})")
         configure_jobs()
     print("\n✅ Setup complete! Use 'isd start' to run.")
 
