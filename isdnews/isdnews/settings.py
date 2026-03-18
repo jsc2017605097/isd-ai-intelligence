@@ -44,7 +44,8 @@ CSRF_TRUSTED_ORIGINS = [
 # ...existing code...
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# STATICFILES_STORAGE disabled for local dev compatibility
+# STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ...existing code...
 # Application definition
