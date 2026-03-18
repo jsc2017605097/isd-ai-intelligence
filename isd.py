@@ -69,6 +69,8 @@ def install():
                 for line in lines:
                     if line.startswith("USE_REDIS="):
                         new_lines.append(f"USE_REDIS={use_redis}")
+                    elif line.startswith("DEBUG="):
+                        new_lines.append("DEBUG=True")
                     elif line.startswith("CELERY_BROKER_URL=") and use_redis == "False":
                         new_lines.append(f"# {line} (Disabled for No-Redis mode)")
                     else:
@@ -76,10 +78,12 @@ def install():
                 (NEWS_DIR / ".env").write_text("\n".join(new_lines))
                 print(f" Created .env file (USE_REDIS={use_redis})")
             else:
-                (NEWS_DIR / ".env").write_text(f"DEBUG=False\nUSE_REDIS={use_redis}\nAI_PROVIDER=ollama\nOLLAMA_BASE_URL=http://127.0.0.1:11434\n")
+                (NEWS_DIR / ".env").write_text(f"DEBUG=True\nUSE_REDIS={use_redis}\nAI_PROVIDER=ollama\nOLLAMA_BASE_URL=http://127.0.0.1:11434\n")
         
         print(" Migrating Database...")
         run_cmd(f'"{python_path}" manage.py migrate', cwd=NEWS_DIR)
+        print(" Collecting static files...")
+        run_cmd(f'"{python_path}" manage.py collectstatic --noinput', cwd=NEWS_DIR)
     
     # Setup Hub
     if HUB_DIR.exists():
