@@ -282,12 +282,21 @@ def install():
 
 def start():
     is_win = sys.platform.startswith('win')
-    venv_bin = "Scripts" if is_win else "bin"
+    # Sửa đường dẫn Python: phải vào thư mục venv và thêm đuôi .exe trên Windows
     py_exec = "python.exe" if is_win else "python"
+    venv_bin = "Scripts" if is_win else "bin"
     py = str(NEWS_DIR / "venv" / venv_bin / py_exec).replace("\\", "/")
+    
     news_dir = str(NEWS_DIR).replace("\\", "/")
     hub_dir = str(HUB_DIR).replace("\\", "/")
     pool = " --pool=solo" if is_win else ""
+    
+    print("▶️ Starting ISD Services...")
+    try:
+        subprocess.run("pm2 --version", shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except:
+        print("❌ Error: 'pm2' not found. Install it: npm install -g pm2"); return
+
     (BASE_DIR / "ecosystem.config.js").write_text(f"""
 module.exports = {{
   apps : [
@@ -297,13 +306,22 @@ module.exports = {{
     {{ name: 'isd-api', script: 'apps/api/server.js', cwd: '{hub_dir}', windowsHide: true }}
   ]
 }};""", encoding='utf-8')
-    run_cmd("pm2 delete all || true", cwd=BASE_DIR)
+    
+    # Dọn dẹp an toàn không dùng 'true' của Linux
+    try: subprocess.run("pm2 delete all", shell=True, cwd=BASE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except: pass
+    
     run_cmd("pm2 start ecosystem.config.js --update-env", cwd=BASE_DIR)
     run_cmd("pm2 save")
     print("\n✅ Services started with latest config.")
 
-def stop(): run_cmd("pm2 stop all || true", cwd=BASE_DIR)
-def restart(): stop(); start()
+def stop():
+    try: subprocess.run("pm2 stop all", shell=True, cwd=BASE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except: pass
+
+def restart(): 
+    stop()
+    start()
 def status(): run_cmd("pm2 list | grep isd || echo 'None.'")
 
 def usage():
