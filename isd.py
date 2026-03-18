@@ -271,10 +271,10 @@ def install():
             script = f"from collector.models import Team, SystemConfig; team, _ = Team.objects.get_or_create(code='{t_code}', defaults={{'name': '{t_name}', 'is_active': True}}); \nif '{t_chat}': SystemConfig.objects.update_or_create(key='telegram_chat_id', team=team, defaults={{'value': '{t_chat}', 'key_type': 'webhook', 'is_active': True}})"
             run_django_script(script)
             while True:
-                url = input(f"  RSS URL for '{name}' [Enter to finish]: ").strip()
-                if not url: break
-                sname = input(f"  Source Name: ").strip()
-                run_django_script(f"from collector.models import Team, Source; team=Team.objects.get(code='{code}'); Source.objects.get_or_create(url='{url}', defaults={{'source': '{sname}', 'type': 'rss', 'team': team, 'is_active': True}})")
+                s_url = input(f"  RSS URL for '{t_name}' [Enter to finish]: ").strip()
+                if not s_url: break
+                s_name = input(f"  Source Name: ").strip()
+                run_django_script(f"from collector.models import Team, Source; team=Team.objects.get(code='{t_code}'); Source.objects.get_or_create(url='{s_url}', defaults={{'source': '{s_name}', 'type': 'rss', 'team': team, 'is_active': True}})")
         configure_jobs()
 
     print("\n✅ Setup complete! Use 'isd start' to run.")
