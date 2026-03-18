@@ -31,15 +31,15 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
 
-# Cấu hình Celery Beat
+# Cu hnh Celery Beat
 app.conf.beat_schedule = {
     'run-crawl-job': {
         'task': 'collector.tasks.collect_data_from_all_sources',
-        'schedule': crontab(minute='*/5'),  # Chạy mỗi 5 phút
+        'schedule': crontab(minute='*/5'),  # Chy mi 5 pht
     },
     'run-openrouter-job': {
         'task': 'collector.tasks.process_openrouter_job',
-        'schedule': crontab(minute='*/30'),  # Chạy mỗi 30 phút
+        'schedule': crontab(minute='*/30'),  # Chy mi 30 pht
     },
 }
 

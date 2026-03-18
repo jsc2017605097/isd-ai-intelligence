@@ -11,7 +11,7 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-# Sử dụng settings_prod trên môi trường production
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings_prod')
+# S dng settings_prod trn mi trng production
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
 
 application = get_wsgi_application()

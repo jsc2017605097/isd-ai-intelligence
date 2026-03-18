@@ -13,27 +13,27 @@ import certifi
 from .utils import get_agentql_api_key_async
 
 from django.utils import timezone as django_timezone
-from django.db import models  # Thêm import này
+from django.db import models  # Thm import ny
 from asgiref.sync import sync_to_async
 
 from .models import Source, Article, FetchLog, AILog
 import logging
 
-# Thêm import cho BeautifulSoup
+# Thm import cho BeautifulSoup
 from bs4 import BeautifulSoup
 
-# Thêm import cho gọi API AI
+# Thm import cho gi API AI
 import json
 import os
 from django.db.models import Q
 from django.db import transaction
 
-# Thêm import cho Playwright
+# Thm import cho Playwright
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 logger = logging.getLogger(__name__)
 
-# Thiết lập logger lưu file riêng cho AI/thumbnail
+# Thit lp logger lu file ring cho AI/thumbnail
 ai_log_path = os.path.join(os.path.dirname(__file__), '../logs/collector_ai.log')
 ai_log_path = os.path.abspath(ai_log_path)
 os.makedirs(os.path.dirname(ai_log_path), exist_ok=True)
@@ -45,10 +45,10 @@ if not ai_logger.handlers:
     file_handler.setFormatter(formatter)
     ai_logger.addHandler(file_handler)
 
-# SSL context chuẩn dùng certifi
+# SSL context chun dng certifi
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
-# Wrappers để gọi ORM an toàn trong async
+# Wrappers  gi ORM an ton trong async
 create_article = sync_to_async(Article.objects.get_or_create, thread_sensitive=True)
 update_source_last_fetched = sync_to_async(Source.save, thread_sensitive=True)
 create_fetch_log = sync_to_async(FetchLog.objects.create, thread_sensitive=True)
@@ -83,7 +83,7 @@ class BaseFetcher:
             except (TypeError, ValueError):
                 pass
 
-            # 3) fallback: giờ hiện tại
+            # 3) fallback: gi hin ti
             return django_timezone.now()
 
         except Exception as e:
@@ -232,18 +232,18 @@ class FetcherFactory:
         return fetcher_class(source)
 
 
-# Hàm gọi AI để dịch và tóm tắt nội dung sang tiếng Việt
+# Hm gi AI  dch v tm tt ni dung sang ting Vit
 async def call_openrouter_ai(content: str, url: str, ai_type: str = "dev") -> str:
     """
-    Giữ tên hàm cũ để tương thích ngược, nhưng hỗ trợ chọn provider/model linh hoạt.
+    Gi tn hm c  tng thch ngc, nhng h tr chn provider/model linh hot.
 
-    Cấu hình qua biến môi trường:
-    - AI_PROVIDER: "ollama" (mặc định) | "openrouter"
-    - AI_MODEL: mặc định "ollama/qwen3:30b-a3b"
-      * Với provider=openrouter: truyền model id OpenRouter
-      * Với provider=ollama: có thể dùng "ollama/qwen3:30b-a3b" hoặc "qwen3:30b-a3b"
-    - OLLAMA_BASE_URL: mặc định "http://127.0.0.1:11434"
-    - AI_KNOWLEDGE_LEVEL: beginner | intermediate | advanced (mặc định beginner)
+    Cu hnh qua bin mi trng:
+    - AI_PROVIDER: "ollama" (mc nh) | "openrouter"
+    - AI_MODEL: mc nh "ollama/qwen3:30b-a3b"
+      * Vi provider=openrouter: truyn model id OpenRouter
+      * Vi provider=ollama: c th dng "ollama/qwen3:30b-a3b" hoc "qwen3:30b-a3b"
+    - OLLAMA_BASE_URL: mc nh "http://127.0.0.1:11434"
+    - AI_KNOWLEDGE_LEVEL: beginner | intermediate | advanced (mc nh beginner)
     """
     from .utils import get_openrouter_api_key_async
 
@@ -252,61 +252,61 @@ async def call_openrouter_ai(content: str, url: str, ai_type: str = "dev") -> st
     ollama_base_url = (os.getenv("OLLAMA_BASE_URL") or "http://127.0.0.1:11434").rstrip('/')
     knowledge_level = (os.getenv("AI_KNOWLEDGE_LEVEL") or "beginner").strip().lower()
 
-    # Chuẩn hoá model cho Ollama (chấp nhận cả prefix ollama/...)
+    # Chun ho model cho Ollama (chp nhn c prefix ollama/...)
     ollama_model = configured_model
     if ollama_model.startswith("ollama/"):
         ollama_model = ollama_model.split("/", 1)[1]
-    # Guard: chỉ từ chối khi nội dung thực sự trống
+    # Guard: ch t chi khi ni dung thc s trng
     if not content or not str(content).strip():
-        return f"Tôi không thể phân tích nội dung từ nguồn: {url}."
+        return f"Ti khng th phn tch ni dung t ngun: {url}."
 
-    # Ưu tiên prompt theo team ai_type để giữ tương thích hành vi cũ
+    # u tin prompt theo team ai_type  gi tng thch hnh vi c
     if ai_type == "dev":
-        system_prompt = """Bạn là Senior Engineering Coach, chuyên huấn luyện developer ôn phỏng vấn thực chiến.
-Mục tiêu: giúp người học trả lời được câu hỏi interview ở mức triển khai production (không nói lý thuyết chung chung).
-Phong cách: rõ ràng, ngắn gọn, thực dụng, có checklist và tình huống vận hành thực tế."""
+        system_prompt = """Bn l Senior Engineering Coach, chuyn hun luyn developer n phng vn thc chin.
+Mc tiu: gip ngi hc tr li c cu hi interview  mc trin khai production (khng ni l thuyt chung chung).
+Phong cch: r rng, ngn gn, thc dng, c checklist v tnh hung vn hnh thc t."""
     elif ai_type == "ba":
-        system_prompt = "Bạn là trợ lý AI cho business analyst."
+        system_prompt = "Bn l tr l AI cho business analyst."
     elif ai_type == "system":
-        system_prompt = "Bạn là trợ lý AI cho system admin."
+        system_prompt = "Bn l tr l AI cho system admin."
     elif knowledge_level == 'beginner':
-        system_prompt = 'Bạn là trợ lý AI cung cấp giải thích đơn giản, dễ hiểu dành cho người mới bắt đầu.'
+        system_prompt = 'Bn l tr l AI cung cp gii thch n gin, d hiu dnh cho ngi mi bt u.'
     elif knowledge_level == 'intermediate':
-        system_prompt = 'Bạn là trợ lý AI cung cấp giải thích trung bình cho người có kiến thức trung cấp.'
+        system_prompt = 'Bn l tr l AI cung cp gii thch trung bnh cho ngi c kin thc trung cp.'
     elif knowledge_level == 'advanced':
-        system_prompt = 'Bạn là trợ lý AI cung cấp giải thích chuyên sâu dành cho người có kiến thức chuyên sâu.'
+        system_prompt = 'Bn l tr l AI cung cp gii thch chuyn su dnh cho ngi c kin thc chuyn su.'
     else:
-        system_prompt = 'Bạn là trợ lý AI.'
+        system_prompt = 'Bn l tr l AI.'
 
-    # Giới hạn input để không vượt context của model local (tránh lỗi max_tokens âm)
+    # Gii hn input  khng vt context ca model local (trnh li max_tokens m)
     content_for_ai = str(content)
     max_chars = int(os.getenv("AI_INPUT_MAX_CHARS", "4500"))
     if len(content_for_ai) > max_chars:
-        content_for_ai = content_for_ai[:max_chars] + "\n\n[...Nội dung đã được cắt bớt để phù hợp context model local...]"
+        content_for_ai = content_for_ai[:max_chars] + "\n\n[...Ni dung  c ct bt  ph hp context model local...]"
 
-    prompt = f"""Dưới đây là nội dung thô tôi cào từ web. Hãy chuyển thành bản ôn luyện PHỎNG VẤN cho Developer (ưu tiên nội dung thực chiến; có thể là backend, testing, debugging, system design, devops hoặc k8s tùy bài gốc).
+    prompt = f"""Di y l ni dung th ti co t web. Hy chuyn thnh bn n luyn PHNG VN cho Developer (u tin ni dung thc chin; c th l backend, testing, debugging, system design, devops hoc k8s ty bi gc).
 
-YÊU CẦU BẮT BUỘC:
-- Trả lời bằng tiếng Việt, KHÔNG dùng bảng.
-- Không bịa; thiếu dữ liệu thì ghi rõ "Thiếu dữ liệu trong bài gốc".
-- Giữ thuật ngữ kỹ thuật gốc theo đúng bài (testing/debugging/backend/system design/devops/k8s...).
-- Tập trung vào: bối cảnh triển khai thật, trade-off, lỗi thường gặp, cách debug, và điểm dễ bị hỏi vặn khi phỏng vấn.
-- Có dẫn nguồn: {url}
+YU CU BT BUC:
+- Tr li bng ting Vit, KHNG dng bng.
+- Khng ba; thiu d liu th ghi r "Thiu d liu trong bi gc".
+- Gi thut ng k thut gc theo ng bi (testing/debugging/backend/system design/devops/k8s...).
+- Tp trung vo: bi cnh trin khai tht, trade-off, li thng gp, cch debug, v im d b hi vn khi phng vn.
+- C dn ngun: {url}
 
-ĐỊNH DẠNG KẾT QUẢ (plain text):
-1) [Interview Brief] Tóm tắt 5-7 bullet: bài này giúp trả lời dạng câu hỏi nào.
-2) [How to answer in interview] Câu trả lời mẫu 60-120 giây (nói như ứng viên có kinh nghiệm thực tế).
-3) [Deep-dive Follow-up] 6-10 câu hỏi vặn sâu + ý trả lời ngắn cho từng câu.
-4) [Production Notes] Các thông số/cấu hình thực tế cần nhớ (ports, probes, resources, scaling, logging, monitoring, security) — nếu bài không có thì nêu giả định an toàn.
-5) [Troubleshooting] 3-5 sự cố thường gặp + quy trình xử lý từng bước (triage -> kiểm tra -> fix -> phòng ngừa).
-6) [Hands-on Task] 1 bài lab nhỏ (30-60 phút) để luyện đúng chủ đề, kèm output mong đợi.
-7) [Flashcards] 8-12 thẻ nhớ nhanh theo format: Thuật ngữ: định nghĩa ngắn + khi nào dùng.
-8) [Red flags] 3-5 câu trả lời "dở" dễ trượt phỏng vấn và cách sửa.
+NH DNG KT QU (plain text):
+1) [Interview Brief] Tm tt 5-7 bullet: bi ny gip tr li dng cu hi no.
+2) [How to answer in interview] Cu tr li mu 60-120 giy (ni nh ng vin c kinh nghim thc t).
+3) [Deep-dive Follow-up] 6-10 cu hi vn su +  tr li ngn cho tng cu.
+4) [Production Notes] Cc thng s/cu hnh thc t cn nh (ports, probes, resources, scaling, logging, monitoring, security)  nu bi khng c th nu gi nh an ton.
+5) [Troubleshooting] 3-5 s c thng gp + quy trnh x l tng bc (triage -> kim tra -> fix -> phng nga).
+6) [Hands-on Task] 1 bi lab nh (30-60 pht)  luyn ng ch , km output mong i.
+7) [Flashcards] 8-12 th nh nhanh theo format: Thut ng: nh ngha ngn + khi no dng.
+8) [Red flags] 3-5 cu tr li "d" d trt phng vn v cch sa.
 
 
-Nội dung: {content_for_ai}"""
+Ni dung: {content_for_ai}"""
 
-    # Payload chuẩn OpenAI Chat Completions (cả OpenRouter và Ollama /v1 đều dùng được)
+    # Payload chun OpenAI Chat Completions (c OpenRouter v Ollama /v1 u dng c)
     payload = {
         "model": configured_model if provider == "openrouter" else ollama_model,
         "messages": [
@@ -334,7 +334,7 @@ Nội dung: {content_for_ai}"""
         logger.info(f"Using Ollama endpoint {endpoint} with model: {ollama_model}")
 
     try:
-        logger.info(f"[AI:{provider}] Gửi prompt cho {url}: {prompt[:500]}...")
+        logger.info(f"[AI:{provider}] Gi prompt cho {url}: {prompt[:500]}...")
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
             async with session.post(endpoint, headers=headers, json=payload, timeout=3600) as resp:
                 if resp.status != 200:
@@ -343,11 +343,11 @@ Nội dung: {content_for_ai}"""
                     raise Exception(f"{provider} API error: {resp.status} - {error_text}")
 
                 data = await resp.json()
-                logger.info(f"[AI:{provider}] Nhận response cho {url}: {str(data)[:500]}...")
+                logger.info(f"[AI:{provider}] Nhn response cho {url}: {str(data)[:500]}...")
 
                 if data.get("choices") and data["choices"][0]["message"].get("content"):
                     result = data["choices"][0]["message"]["content"].strip()
-                    logger.info(f"[AI:{provider}] Nội dung dịch cho {url}: {result[:500]}...")
+                    logger.info(f"[AI:{provider}] Ni dung dch cho {url}: {result[:500]}...")
 
                     def create_log_sync():
                         return AILog.objects.create(
@@ -365,7 +365,7 @@ Nội dung: {content_for_ai}"""
                     telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
 
                     if telegram_bot_token and telegram_chat_id:
-                        # Lấy metadata bài viết để tiêu đề Telegram rõ ràng hơn
+                        # Ly metadata bi vit  tiu  Telegram r rng hn
                         article_title = ''
                         source_name = ''
                         try:
@@ -376,13 +376,13 @@ Nội dung: {content_for_ai}"""
                                 return (a.title or '', (a.source.source if a.source else ''))
                             article_title, source_name = await asyncio.to_thread(_get_article_meta)
                         except Exception as _meta_err:
-                            logger.warning(f"[AI:{provider}] Không lấy được metadata bài viết: {_meta_err}")
+                            logger.warning(f"[AI:{provider}] Khng ly c metadata bi vit: {_meta_err}")
 
-                        short_title = (article_title[:90] + '…') if article_title and len(article_title) > 90 else (article_title or 'Bài viết mới')
-                        source_tag = f" • {source_name}" if source_name else ''
+                        short_title = (article_title[:90] + '') if article_title and len(article_title) > 90 else (article_title or 'Bi vit mi')
+                        source_tag = f"  {source_name}" if source_name else ''
                         notify_title = f"{short_title}{source_tag}"
 
-                        logger.info(f"[AI:{provider}] Gửi thông báo Telegram cho team {ai_type} cho URL: {url}")
+                        logger.info(f"[AI:{provider}] Gi thng bo Telegram cho team {ai_type} cho URL: {url}")
                         await notify_telegram(
                             telegram_bot_token,
                             telegram_chat_id,
@@ -391,11 +391,11 @@ Nội dung: {content_for_ai}"""
                             url
                         )
                     else:
-                        logger.warning("[AI] TELEGRAM_BOT_TOKEN hoặc TELEGRAM_CHAT_ID chưa được cấu hình, bỏ qua thông báo")
+                        logger.warning("[AI] TELEGRAM_BOT_TOKEN hoc TELEGRAM_CHAT_ID cha c cu hnh, b qua thng bo")
 
                     return result
                 else:
-                    logger.warning(f"[AI:{provider}] Không nhận được nội dung dịch cho {url}, trả về content gốc.")
+                    logger.warning(f"[AI:{provider}] Khng nhn c ni dung dch cho {url}, tr v content gc.")
 
                     def create_error_log_sync():
                         return AILog.objects.create(
@@ -411,7 +411,7 @@ Nội dung: {content_for_ai}"""
                     return f"AI_PROCESSING_ERROR: No content from AI for {url}"
 
     except Exception as e:
-        logger.warning(f"Lỗi gọi AI provider {provider}: {e}")
+        logger.warning(f"Li gi AI provider {provider}: {e}")
         try:
             error_response = await resp.text() if 'resp' in locals() else ''
         except Exception:
@@ -433,83 +433,83 @@ Nội dung: {content_for_ai}"""
 
 async def fetch_article_detail(url: str) -> Dict[str, str]:
     """
-    Dùng Playwright để render trang có JavaScript, đợi load (có bắt timeout),
-    sau đó dùng BeautifulSoup trích xuất toàn bộ văn bản (text-only) và ảnh thumbnail.
-    Bắt riêng TimeoutError để không dừng khi quá thời gian chờ.
+    Dng Playwright  render trang c JavaScript, i load (c bt timeout),
+    sau  dng BeautifulSoup trch xut ton b vn bn (text-only) v nh thumbnail.
+    Bt ring TimeoutError  khng dng khi qu thi gian ch.
     """
     try:
-        # 1. Mở Playwright, đi đến URL và đợi load xong (timeout tăng lên 60000ms)
+        # 1. M Playwright, i n URL v i load xong (timeout tng ln 60000ms)
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
-            logger.info(f"[fetch_article_detail] Đang truy cập URL: {url}")
+            logger.info(f"[fetch_article_detail] ang truy cp URL: {url}")
             
             try:
-                #  Tăng timeout lên 60 giây
+                #  Tng timeout ln 60 giy
                 await page.goto(url, timeout=60000)
             except PlaywrightTimeoutError:
-                logger.warning(f"[fetch_article_detail] Timeout khi page.goto cho {url}, dùng HTML tạm thời.")
+                logger.warning(f"[fetch_article_detail] Timeout khi page.goto cho {url}, dng HTML tm thi.")
             
             try:
-                # Đợi networkidle, vẫn giữ timeout mặc định (30 giây) vì phần lớn đã load ở trên
+                # i networkidle, vn gi timeout mc nh (30 giy) v phn ln  load  trn
                 await page.wait_for_load_state("networkidle")
             except PlaywrightTimeoutError:
-                logger.warning(f"[fetch_article_detail] Timeout khi wait_for_load_state cho {url}, tiếp tục với HTML hiện tại.")
+                logger.warning(f"[fetch_article_detail] Timeout khi wait_for_load_state cho {url}, tip tc vi HTML hin ti.")
 
-            # Đợi thêm selector 'article' (nếu có), timeout 7000ms
+            # i thm selector 'article' (nu c), timeout 7000ms
             try:
                 await page.wait_for_selector('article', timeout=7000)
-                logger.info(f"[fetch_article_detail] Selector 'article' đã xuất hiện")
+                logger.info(f"[fetch_article_detail] Selector 'article'  xut hin")
             except PlaywrightTimeoutError:
-                logger.warning(f"[fetch_article_detail] Không tìm thấy selector 'article' (timeout) trong trang {url}")
+                logger.warning(f"[fetch_article_detail] Khng tm thy selector 'article' (timeout) trong trang {url}")
             
-            # Đợi thêm 2 giây cho mọi JS chạy xong (nếu còn)
+            # i thm 2 giy cho mi JS chy xong (nu cn)
             await page.wait_for_timeout(2000)
             
-            # Lấy HTML sau khi render xong (dù có timeout ở trên hay không)
+            # Ly HTML sau khi render xong (d c timeout  trn hay khng)
             html = await page.content()
             await browser.close()
 
-        # 2. Phân tích HTML với BeautifulSoup
+        # 2. Phn tch HTML vi BeautifulSoup
         soup = BeautifulSoup(html, "html.parser")
         
-        # Loại bỏ các thẻ không cần thiết
+        # Loi b cc th khng cn thit
         for sel in ["script", "style", "footer", ".ads", ".comments", ".related"]:
             for tag in soup.select(sel):
                 tag.decompose()
 
-        # Tìm phần nội dung chính (có thể mở rộng thêm selector nếu cần)
+        # Tm phn ni dung chnh (c th m rng thm selector nu cn)
         selectors = ["main", "article", "#content", ".post", ".entry", ".article-body", ".content"]
         root = None
         for sel in selectors:
             root = soup.select_one(sel)
             if root:
-                logger.info(f"[fetch_article_detail] Tìm thấy selector nội dung chính: {sel}")
+                logger.info(f"[fetch_article_detail] Tm thy selector ni dung chnh: {sel}")
                 break
         if not root:
-            logger.warning(f"[fetch_article_detail] Không tìm thấy selector nội dung chính, dùng toàn bộ trang {url}")
+            logger.warning(f"[fetch_article_detail] Khng tm thy selector ni dung chnh, dng ton b trang {url}")
             root = soup
 
-        # Lấy title và meta description (nếu tồn tại)
+        # Ly title v meta description (nu tn ti)
         title = soup.title.string.strip() if soup.title else ""
         meta_tag = soup.find("meta", attrs={"name": "description"})
         meta = meta_tag["content"].strip() if meta_tag and meta_tag.get("content") else ""
 
-        # Lấy toàn bộ văn bản từ root
+        # Ly ton b vn bn t root
         full_text = root.get_text(separator="\n", strip=True)
         if title:
             full_text = f"{title}\n\n{full_text}"
         if meta:
             full_text = f"{full_text}\n\n{meta}"
 
-        # Loại bỏ dòng trống
+        # Loi b dng trng
         lines = [line for line in full_text.splitlines() if line.strip()]
         raw_content = "\n".join(lines)
 
-        logger.info(f"[fetch_article_detail] Độ dài nội dung thô: {len(raw_content)}")
-        logger.debug(f"[fetch_article_detail] Đoạn nội dung thô (500 ký tự đầu): {raw_content[:500]}")
+        logger.info(f"[fetch_article_detail]  di ni dung th: {len(raw_content)}")
+        logger.debug(f"[fetch_article_detail] on ni dung th (500 k t u): {raw_content[:500]}")
 
-        # 3. Lấy thumbnail: ưu tiên meta og:image, nếu không có thì ảnh đầu tiên trong root
+        # 3. Ly thumbnail: u tin meta og:image, nu khng c th nh u tin trong root
         thumbnail = ""
         ogimg = soup.find("meta", property="og:image")
         if ogimg and ogimg.get("content"):
@@ -519,18 +519,18 @@ async def fetch_article_detail(url: str) -> Dict[str, str]:
             img_tag = root.find("img") if root else None
             if img_tag and img_tag.get("src"):
                 thumbnail = img_tag["src"]
-                logger.info(f"[fetch_article_detail] Thumbnail ảnh đầu tiên trong nội dung cho {url}: {thumbnail}")
+                logger.info(f"[fetch_article_detail] Thumbnail nh u tin trong ni dung cho {url}: {thumbnail}")
             else:
                 img_tag2 = soup.find("img")
                 if img_tag2 and img_tag2.get("src"):
                     thumbnail = img_tag2["src"]
-                    logger.info(f"[fetch_article_detail] Thumbnail ảnh đầu tiên trong trang cho {url}: {thumbnail}")
+                    logger.info(f"[fetch_article_detail] Thumbnail nh u tin trong trang cho {url}: {thumbnail}")
 
-        # 4. Trả về raw_content và thumbnail
+        # 4. Tr v raw_content v thumbnail
         return {"content": raw_content, "thumbnail": thumbnail}
 
     except Exception as e:
-        logger.error(f"[fetch_article_detail] Lỗi khi cào chi tiết cho {url}: {e}")
+        logger.error(f"[fetch_article_detail] Li khi co chi tit cho {url}: {e}")
         return {"content": "", "thumbnail": ""}
 class DataCollector:
     """Main collector class to orchestrate fetching"""
@@ -546,12 +546,12 @@ class DataCollector:
         }
 
         try:
-            # Tạo fetcher tương ứng với source (rss, api, static)
+            # To fetcher tng ng vi source (rss, api, static)
             fetcher = FetcherFactory.create_fetcher(source)
-            # Lấy danh sách bài từ fetcher
+            # Ly danh sch bi t fetcher
             articles_data = await fetcher.fetch()
 
-            # Lọc các URL đã tồn tại trong Article, chỉ lấy tối đa 5 bài mới
+            # Lc cc URL  tn ti trong Article, ch ly ti a 5 bi mi
             existing_urls = set(
                 await sync_to_async(list)(
                     Article.objects.filter(url__in=[a['url'] for a in articles_data])
@@ -563,7 +563,7 @@ class DataCollector:
             saved_count = 0
             for data in new_articles:
                 try:
-                    # Tạo Article mới với content và thumbnail tạm thời là rỗng
+                    # To Article mi vi content v thumbnail tm thi l rng
                     article_obj, created = await create_article(
                         url=data['url'],
                         defaults={
@@ -571,8 +571,8 @@ class DataCollector:
                             'source': source,
                             'published_at': data['published_at'],
                             'summary': data.get('summary', ''),
-                            'content': '',       # sẽ cào chi tiết ngay sau
-                            'thumbnail': '',     # sẽ cào chi tiết ngay sau
+                            'content': '',       # s co chi tit ngay sau
+                            'thumbnail': '',     # s co chi tit ngay sau
                             'is_ai_processed': False,
                             'ai_type': '',
                             'ai_content': '',
@@ -580,25 +580,25 @@ class DataCollector:
                     )
 
                     if created:
-                        # Nếu mới tạo, cào chi tiết nội dung và thumbnail
+                        # Nu mi to, co chi tit ni dung v thumbnail
                         detail = await fetch_article_detail(data['url'])
                         article_obj.content = detail.get("content", "")
                         article_obj.thumbnail = detail.get("thumbnail", "")
                         
-                        # Lưu lại Article (thao tác Django ORM phải chạy đồng bộ)
+                        # Lu li Article (thao tc Django ORM phi chy ng b)
                         def save_article_sync():
                             article_obj.save(update_fields=['content', 'thumbnail'])
                         await asyncio.to_thread(save_article_sync)
 
                     saved_count += 1
-                    # Tạm nghỉ 2 giây giữa mỗi bài để tránh quá tải
+                    # Tm ngh 2 giy gia mi bi  trnh qu ti
                     await asyncio.sleep(2)
 
                 except Exception as e:
                     logger.error(f"Error saving or crawling detail for {data.get('url')}: {e}")
                     continue
 
-            # Sau khi xử lý xong, cập nhật last_fetched của source
+            # Sau khi x l xong, cp nht last_fetched ca source
             source.last_fetched = django_timezone.now()
             await update_source_last_fetched(source, update_fields=['last_fetched'])
 
@@ -628,7 +628,7 @@ class DataCollector:
         if team_code:
             queryset = queryset.filter(team__code=team_code)
 
-        # Lọc các nguồn có force_collect=True hoặc đã đến thời gian thu thập
+        # Lc cc ngun c force_collect=True hoc  n thi gian thu thp
         queryset = queryset.filter(
             models.Q(force_collect=True) |
             models.Q(last_fetched__isnull=True) |
@@ -649,20 +649,20 @@ class DataCollector:
 
 async def notify_telegram(bot_token: str, chat_id: str, title: str, content: str, url: str = None):
     """
-    Gửi thông báo đến Telegram Bot API
+    Gi thng bo n Telegram Bot API
     """
     if not bot_token or not chat_id:
-        logger.warning("[Telegram] Bot token hoặc chat ID không được cung cấp, bỏ qua thông báo")
+        logger.warning("[Telegram] Bot token hoc chat ID khng c cung cp, b qua thng bo")
         return
     
-    # Format nội dung cho Telegram (hỗ trợ Markdown)
+    # Format ni dung cho Telegram (h tr Markdown)
     message = f"*{title}*\n\n{content}"
     if url:
-        message += f"\n\n🔗 [Xem bài viết]({url})"
+        message += f"\n\n [Xem bi vit]({url})"
     
-    # Giới hạn độ dài tin nhắn Telegram (4096 ký tự)
+    # Gii hn  di tin nhn Telegram (4096 k t)
     if len(message) > 4096:
-        message = message[:4000] + "\n\n... (nội dung đã được cắt gọn)"
+        message = message[:4000] + "\n\n... (ni dung  c ct gn)"
     
     api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     
@@ -674,17 +674,17 @@ async def notify_telegram(bot_token: str, chat_id: str, title: str, content: str
     }
 
     try:
-        logger.info(f"[Telegram] Đang gửi thông báo đến chat {chat_id}...")
+        logger.info(f"[Telegram] ang gi thng bo n chat {chat_id}...")
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
             async with session.post(api_url, json=payload, timeout=30) as resp:
                 if resp.status == 200:
-                    logger.info("[Telegram] Đã gửi thông báo thành công (Markdown)")
+                    logger.info("[Telegram]  gi thng bo thnh cng (Markdown)")
                     return
 
                 error_text = await resp.text()
-                logger.error(f"[Telegram] Lỗi gửi Markdown. Status: {resp.status}, Response: {error_text}")
+                logger.error(f"[Telegram] Li gi Markdown. Status: {resp.status}, Response: {error_text}")
 
-                # Fallback: gửi plain text nếu lỗi parse Markdown/entity
+                # Fallback: gi plain text nu li parse Markdown/entity
                 fallback_payload = {
                     "chat_id": chat_id,
                     "text": message,
@@ -692,66 +692,66 @@ async def notify_telegram(bot_token: str, chat_id: str, title: str, content: str
                 }
                 async with session.post(api_url, json=fallback_payload, timeout=30) as resp2:
                     if resp2.status == 200:
-                        logger.info("[Telegram] Fallback plain text gửi thành công")
+                        logger.info("[Telegram] Fallback plain text gi thnh cng")
                     else:
                         error_text2 = await resp2.text()
-                        logger.error(f"[Telegram] Fallback cũng lỗi. Status: {resp2.status}, Response: {error_text2}")
+                        logger.error(f"[Telegram] Fallback cng li. Status: {resp2.status}, Response: {error_text2}")
     except Exception as e:
-        logger.error(f"[Telegram] Lỗi khi gửi thông báo: {str(e)}")
-        logger.exception("[Telegram] Chi tiết lỗi:")
+        logger.error(f"[Telegram] Li khi gi thng bo: {str(e)}")
+        logger.exception("[Telegram] Chi tit li:")
 
 
 async def notify_teams(flow_url: str, title: str, content: str, url: str = None, sender: str = "Bot Notify"):
     """
-    Gửi thông báo đến Microsoft Teams qua Power Automate với format đẹp
-    (DEPRECATED - Không còn sử dụng, giữ lại để tương thích ngược)
+    Gi thng bo n Microsoft Teams qua Power Automate vi format p
+    (DEPRECATED - Khng cn s dng, gi li  tng thch ngc)
     """
     
     def format_content_for_teams(content: str) -> str:
-        """Format nội dung cho Teams với markdown"""
+        """Format ni dung cho Teams vi markdown"""
         
-        # Loại bỏ HTML tags nếu có
+        # Loi b HTML tags nu c
         content = re.sub(r'<[^>]+>', '', content)
         
         # Decode HTML entities
         content = html.unescape(content)
         
-        # Thay thế markdown cơ bản
+        # Thay th markdown c bn
         content = re.sub(r'\*\*(.*?)\*\*', r'**\1**', content)  # Bold
         content = re.sub(r'\*(.*?)\*', r'*\1*', content)        # Italic
         content = re.sub(r'```(.*?)```', r'`\1`', content, flags=re.DOTALL)  # Code blocks
         content = re.sub(r'`(.*?)`', r'`\1`', content)         # Inline code
         
-        # Xử lý danh sách
-        content = re.sub(r'^- ', '• ', content, flags=re.MULTILINE)
+        # X l danh sch
+        content = re.sub(r'^- ', ' ', content, flags=re.MULTILINE)
         content = re.sub(r'^\d+\. ', '1. ', content, flags=re.MULTILINE)
         
-        # Xử lý headers
+        # X l headers
         content = re.sub(r'^### (.*?)$', r'**\1**', content, flags=re.MULTILINE)
         content = re.sub(r'^## (.*?)$', r'**\1**', content, flags=re.MULTILINE)
         content = re.sub(r'^# (.*?)$', r'**\1**', content, flags=re.MULTILINE)
         
-        # Xử lý links
+        # X l links
         content = re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](\2)', content)
         
-        # Loại bỏ các dòng trống thừa
+        # Loi b cc dng trng tha
         content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)
         
-        # Giới hạn độ dài nếu quá dài
+        # Gii hn  di nu qu di
         if len(content) > 4000:
-            content = content[:3800] + "\n\n... (nội dung đã được cắt gọn)"
+            content = content[:3800] + "\n\n... (ni dung  c ct gn)"
         
         return content.strip()
     
     def create_summary(content: str, max_length: int = 200) -> str:
-        """Tạo tóm tắt ngắn gọn"""
-        # Lấy đoạn đầu tiên
+        """To tm tt ngn gn"""
+        # Ly on u tin
         first_paragraph = content.split('\n\n')[0]
         
         if len(first_paragraph) <= max_length:
             return first_paragraph
         
-        # Cắt tại từ cuối cùng
+        # Ct ti t cui cng
         words = first_paragraph.split()
         summary = ""
         for word in words:
@@ -762,20 +762,20 @@ async def notify_teams(flow_url: str, title: str, content: str, url: str = None,
         
         return summary.strip() + "..."
     
-    # Format nội dung
+    # Format ni dung
     formatted_content = format_content_for_teams(content)
     
-    # Tạo tóm tắt ngắn cho title nếu cần
+    # To tm tt ngn cho title nu cn
     if len(title) > 100:
         title = title[:97] + "..."
     
-    # Tạo payload
+    # To payload
     payload = {
         "title": title,
         "message": formatted_content,
         "url": url or "",
         "sender": sender,
-        "summary": create_summary(formatted_content)  # Thêm tóm tắt
+        "summary": create_summary(formatted_content)  # Thm tm tt
     }
     
     try:
@@ -790,13 +790,13 @@ async def notify_teams(flow_url: str, title: str, content: str, url: str = None,
                 }
             ) as response:
                 if response.status == 200:
-                    return {"status": "success", "message": "Đã gửi thành công"}
+                    return {"status": "success", "message": " gi thnh cng"}
                 else:
-                    return {"status": "error", "message": f"Lỗi HTTP: {response.status}"}
+                    return {"status": "error", "message": f"Li HTTP: {response.status}"}
                     
     except Exception as e:
-        return {"status": "error", "message": f"Lỗi: {str(e)}"}
-    # """Gửi thông báo đến Microsoft Teams thông qua Power Automate Flow"""
+        return {"status": "error", "message": f"Li: {str(e)}"}
+    # """Gi thng bo n Microsoft Teams thng qua Power Automate Flow"""
     # logger.info(f"[Teams] Preparing to send notification...")
     # logger.info(f"[Teams] Flow URL: {flow_url[:50]}...")
     # logger.info(f"[Teams] Title: {title}")
@@ -815,7 +815,7 @@ async def notify_teams(flow_url: str, title: str, content: str, url: str = None,
     #         "message": content,
     #         "sender": sender,
     #         "url": url if url else "",
-    #         "timestamp": None  # Flow sẽ tự generate timestamp
+    #         "timestamp": None  # Flow s t generate timestamp
     #     }
         
     #     headers = {
@@ -825,7 +825,7 @@ async def notify_teams(flow_url: str, title: str, content: str, url: str = None,
     #     logger.info("[Teams] Sending request to Power Automate Flow...")
     #     logger.debug(f"[Teams] Payload: {json.dumps(payload, indent=2)}")
         
-    #     # Sử dụng aiohttp để gữi async request
+    #     # S dng aiohttp  gi async request
     #     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl.create_default_context())) as session:
     #         async with session.post(flow_url, json=payload, headers=headers) as resp:
     #             response_text = await resp.text()

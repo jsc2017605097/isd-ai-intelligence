@@ -1,7 +1,7 @@
 from .settings import *
 
 DEBUG = False
-ALLOWED_HOSTS = ['isdnews.telehub.vn']  # Thay thế bằng domain thực tế của bạn
+ALLOWED_HOSTS = ['isdnews.telehub.vn']  # Thay th bng domain thc t ca bn
 CSRF_TRUSTED_ORIGINS = ['https://isdnews.telehub.vn']
 # Security settings
 SECURE_SSL_REDIRECT = True
@@ -33,7 +33,7 @@ LOGGING = {
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': '/home/bsvdev/var/log/django/error.log',
+            'filename': os.path.join(BASE_DIR, 'logs', 'error_prod.log'),
         },
         'console': {
             'level': 'ERROR',

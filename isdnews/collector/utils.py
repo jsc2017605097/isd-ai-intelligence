@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 from asgiref.sync import sync_to_async
 
 
-# Helper sync functions để gọi trong async context
+# Helper sync functions  gi trong async context
 def get_system_config_sync(key: str, team: Optional[str] = None):
     try:
         query = SystemConfig.objects.filter(key=key, is_active=True)
@@ -28,7 +28,7 @@ async def get_system_config_async(key: str, team: Optional[str] = None, cache_ti
     if value is not None:
         return value
         
-    # Tạo hàm đồng bộ để lấy config
+    # To hm ng b  ly config
     def get_config_sync():
         try:
             query = SystemConfig.objects.filter(key=key, is_active=True)
@@ -44,7 +44,7 @@ async def get_system_config_async(key: str, team: Optional[str] = None, cache_ti
             logger.error(f"Error getting system config {key}: {e}")
             return None
 
-    # Gọi hàm đồng bộ trong thread riêng
+    # Gi hm ng b trong thread ring
     return await asyncio.to_thread(get_config_sync)
 
 
@@ -102,7 +102,7 @@ def get_teams_webhook_sync(team_code: str) -> Optional[str]:
 
 async def get_teams_webhook_async(team_code: str) -> Optional[str]:
     try:
-        # Tạo hàm đồng bộ để lấy webhook
+        # To hm ng b  ly webhook
         def get_webhook_sync():
             try:
                 team = Team.objects.get(code=team_code, is_active=True)
@@ -119,7 +119,7 @@ async def get_teams_webhook_async(team_code: str) -> Optional[str]:
                 logger.error(f"Error getting teams webhook: {str(e)}")
                 return None
 
-        # Gọi hàm đồng bộ trong thread riêng
+        # Gi hm ng b trong thread ring
         return await asyncio.to_thread(get_webhook_sync)
     except Exception as e:
         logger.error(f"Error in get_teams_webhook_async: {str(e)}")

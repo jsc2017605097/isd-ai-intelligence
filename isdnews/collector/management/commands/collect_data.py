@@ -35,12 +35,12 @@ class Command(BaseCommand):
                     self.style.ERROR(f'Source with ID {options["source_id"]} not found or inactive')
                 )
         else:
-            # Collect from all sources hoặc chỉ những nguồn đến hạn thu thập
+            # Collect from all sources hoc ch nhng ngun n hn thu thp
             if not options['force']:
-                # Lọc các nguồn đến hạn thu thập bằng Python (tương thích SQLite)
+                # Lc cc ngun n hn thu thp bng Python (tng thch SQLite)
                 now = timezone.now()
                 sources = Source.objects.filter(is_active=True)
-                # Nếu force_collect=True thì luôn thu thập, còn lại kiểm tra thời gian chờ
+                # Nu force_collect=True th lun thu thp, cn li kim tra thi gian ch
                 due_sources = [
                     s for s in sources
                     if s.force_collect or s.last_fetched is None or (now - s.last_fetched).total_seconds() >= s.fetch_interval
@@ -48,7 +48,7 @@ class Command(BaseCommand):
                 if not due_sources:
                     self.stdout.write(self.style.SUCCESS('No sources due for update'))
                     return
-                # Giới hạn số lượng nguồn xử lý đồng thời để tránh quá tải
+                # Gii hn s lng ngun x l ng thi  trnh qu ti
                 MAX_SOURCES = 10
                 limited_sources = due_sources[:MAX_SOURCES]
                 async def collect_all(due_sources, collector):
@@ -69,12 +69,12 @@ class Command(BaseCommand):
         if result['status'] == 'success':
             self.stdout.write(
                 self.style.SUCCESS(
-                    f'✓ {source_name}: {result["articles_count"]} articles in {result["execution_time"]:.2f}s'
+                    f' {source_name}: {result["articles_count"]} articles in {result["execution_time"]:.2f}s'
                 )
             )
         else:
             self.stdout.write(
                 self.style.ERROR(
-                    f'✗ {source_name}: {result["error_message"]}'
+                    f' {source_name}: {result["error_message"]}'
                 )
             )

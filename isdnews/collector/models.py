@@ -5,10 +5,10 @@ import json
 from django.utils import timezone
 
 class Team(models.Model):
-    """Model quản lý các team trong hệ thống"""
-    code = models.CharField(max_length=20, unique=True, help_text="Mã code của team (ví dụ: dev, ba, system)")
-    name = models.CharField(max_length=100, help_text="Tên đầy đủ của team")
-    description = models.TextField(blank=True, help_text="Mô tả về team")
+    """Model qun l cc team trong h thng"""
+    code = models.CharField(max_length=20, unique=True, help_text="M code ca team (v d: dev, ba, system)")
+    name = models.CharField(max_length=100, help_text="Tn y  ca team")
+    description = models.TextField(blank=True, help_text="M t v team")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -26,7 +26,7 @@ class Source(models.Model):
     TYPE_CHOICES = [
         ('api', 'API Endpoint'),
         ('rss', 'RSS Feed'),
-        ('static', 'Web Tĩnh (AgentQL)'),
+        ('static', 'Web Tnh (AgentQL)'),
     ]
 
     url = models.URLField()
@@ -38,10 +38,10 @@ class Source(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    # Thông tin về cấu hình thu thập
+    # Thng tin v cu hnh thu thp
     fetch_interval = models.IntegerField(default=3600, help_text="Interval in seconds")
     last_fetched = models.DateTimeField(null=True, blank=True)
-    force_collect = models.BooleanField(default=False, help_text="Bật để luôn thu thập nguồn này, bỏ qua thời gian chờ")
+    force_collect = models.BooleanField(default=False, help_text="Bt  lun thu thp ngun ny, b qua thi gian ch")
     
     def clean(self):
         super().clean()
@@ -50,10 +50,10 @@ class Source(models.Model):
         if self.type == 'static':
             if not self.params:
                 self.params = {
-                    "prompt": "hãy lấy các url liên quan đến [nội dung bạn cần lấy] sau đó gửi lại cho tôi , yêu cầu dữ liệu trả về chỉ là 1 mảng các url, không được sai format như tôi yêu cầu"
+                    "prompt": "hy ly cc url lin quan n [ni dung bn cn ly] sau  gi li cho ti , yu cu d liu tr v ch l 1 mng cc url, khng c sai format nh ti yu cu"
                 }
             elif 'prompt' not in self.params:
-                self.params['prompt'] = "hãy lấy các url liên quan đến [nội dung bạn cần lấy] sau đó gửi lại cho tôi , yêu cầu dữ liệu trả về chỉ là 1 mảng các url, không được sai format như tôi yêu cầu"
+                self.params['prompt'] = "hy ly cc url lin quan n [ni dung bn cn ly] sau  gi li cho ti , yu cu d liu tr v ch l 1 mng cc url, khng c sai format nh ti yu cu"
         
         # Validate params structure
         if self.params:
@@ -76,7 +76,7 @@ class Source(models.Model):
         app_label = 'collector'
 
 class Article(models.Model):
-    """Model để lưu trữ các bài viết đã thu thập"""
+    """Model  lu tr cc bi vit  thu thp"""
     title = models.CharField(max_length=500)
     url = models.URLField(unique=True)
     source = models.ForeignKey(Source, on_delete=models.CASCADE, related_name='articles')
@@ -92,12 +92,12 @@ class Article(models.Model):
     
     @property
     def team(self):
-        """Lấy thông tin team từ source"""
+        """Ly thng tin team t source"""
         return self.source.team
     
     @property
     def team_name(self):
-        """Lấy tên team từ source"""
+        """Ly tn team t source"""
         return self.source.team.name if self.source.team else None
     
     class Meta:
@@ -110,11 +110,11 @@ class Article(models.Model):
         return self.title
 
 class FetchLog(models.Model):
-    """Log việc thu thập dữ liệu"""
+    """Log vic thu thp d liu"""
     STATUS_CHOICES = [
-        ('success', 'Thành công'),
-        ('error', 'Lỗi'),
-        ('partial', 'Một phần'),
+        ('success', 'Thnh cng'),
+        ('error', 'Li'),
+        ('partial', 'Mt phn'),
     ]
     
     source = models.ForeignKey(Source, on_delete=models.CASCADE, related_name='fetch_logs')
@@ -126,12 +126,12 @@ class FetchLog(models.Model):
     
     @property
     def team(self):
-        """Lấy thông tin team từ source"""
+        """Ly thng tin team t source"""
         return self.source.team
     
     @property
     def team_name(self):
-        """Lấy tên team từ source"""
+        """Ly tn team t source"""
         return self.source.team.name if self.source.team else None
     
     class Meta:
@@ -143,18 +143,18 @@ class FetchLog(models.Model):
         return f"{self.source.source} - {self.get_status_display()} ({self.fetched_at})"
 
 class AILog(models.Model):
-    """Log tương tác với OpenRouter AI"""
+    """Log tng tc vi OpenRouter AI"""
     url = models.URLField()
     prompt = models.TextField()
     response = models.TextField(blank=True)
     result = models.TextField(blank=True)
-    status = models.CharField(max_length=20, choices=[('success', 'Thành công'), ('error', 'Lỗi')], default='success')
+    status = models.CharField(max_length=20, choices=[('success', 'Thnh cng'), ('error', 'Li')], default='success')
     error_message = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     @property
     def team(self):
-        """Lấy thông tin team từ article thông qua URL"""
+        """Ly thng tin team t article thng qua URL"""
         try:
             article = Article.objects.filter(url=self.url).first()
             if article and article.source and article.source.team:
@@ -165,7 +165,7 @@ class AILog(models.Model):
     
     @property
     def team_name(self):
-        """Lấy tên team từ article nếu có"""
+        """Ly tn team t article nu c"""
         if self.team:
             return self.team.name
         return None
@@ -180,8 +180,8 @@ class AILog(models.Model):
 
 class JobConfig(models.Model):
     JOB_TYPE_CHOICES = [
-        ('crawl', 'Cào dữ liệu'),
-        ('openrouter', 'Gửi OpenRouter'),
+        ('crawl', 'Co d liu'),
+        ('openrouter', 'Gi OpenRouter'),
     ]
     job_type = models.CharField(max_length=50, choices=JOB_TYPE_CHOICES, unique=True)
     enabled = models.BooleanField(default=True)
@@ -200,7 +200,7 @@ class JobConfig(models.Model):
 
 
 class SystemConfig(models.Model):
-    """Model lưu trữ cấu hình hệ thống"""
+    """Model lu tr cu hnh h thng"""
     KEY_CHOICES = [
         ('openrouter_api_key', 'OpenRouter API Key'),
         ('teams_webhook', 'Teams Webhook URL'),
@@ -213,13 +213,13 @@ class SystemConfig(models.Model):
     ]
 
     key = models.CharField(max_length=100, choices=KEY_CHOICES,
-                         help_text="Chọn loại cấu hình cần thiết lập")
-    value = models.TextField(help_text="Nhập giá trị cấu hình (API key hoặc webhook URL)")
+                         help_text="Chn loi cu hnh cn thit lp")
+    value = models.TextField(help_text="Nhp gi tr cu hnh (API key hoc webhook URL)")
     key_type = models.CharField(max_length=20, choices=KEY_TYPES)
     team = models.ForeignKey(Team, on_delete=models.PROTECT, related_name='configs', 
                            null=True, blank=True,
-                           help_text="Chọn team (chỉ áp dụng cho Teams Webhook)")
-    description = models.TextField(blank=True, help_text="Mô tả về cấu hình")
+                           help_text="Chn team (ch p dng cho Teams Webhook)")
+    description = models.TextField(blank=True, help_text="M t v cu hnh")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -243,7 +243,7 @@ class SystemConfig(models.Model):
         verbose_name = "System Config"
         verbose_name_plural = "System Configs"
         ordering = ['key']
-        unique_together = [('key', 'team')]  # Cho phép nhiều webhook với team khác nhau
+        unique_together = [('key', 'team')]  # Cho php nhiu webhook vi team khc nhau
         app_label = 'collector'
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

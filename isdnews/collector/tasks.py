@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 @shared_task
 def collect_data_from_source(source_id, team_code=None):
     """
-    Thu thập dữ liệu cho một Source cụ thể.
-    Nếu team_code != None, sẽ chỉ fetch nếu Source.team.code == team_code.
+    Thu thp d liu cho mt Source c th.
+    Nu team_code != None, s ch fetch nu Source.team.code == team_code.
     """
     try:
-        # Tìm source, thêm điều kiện lọc team nếu có:
+        # Tm source, thm iu kin lc team nu c:
         if team_code:
             source = Source.objects.get(id=source_id, is_active=True, team__code=team_code)
         else:
@@ -52,13 +52,13 @@ def collect_data_from_source(source_id, team_code=None):
 
 @shared_task
 def collect_data_from_all_sources(team_code=None):
-    logger.info('[Celery Beat] Đã gọi task collect_data_from_all_sources (team_code=%s)', team_code)
+    logger.info('[Celery Beat]  gi task collect_data_from_all_sources (team_code=%s)', team_code)
     try:
         collector = DataCollector()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            # Trong DataCollector.collect_all_active_sources, bạn đã có tham số team_code
+            # Trong DataCollector.collect_all_active_sources, bn  c tham s team_code
             results = loop.run_until_complete(
                 collector.collect_all_active_sources(team_code=team_code)
             )
@@ -81,19 +81,19 @@ def collect_data_from_all_sources(team_code=None):
 @shared_task
 def scheduled_collection(team_code=None):
     """
-    Task gần giống cron: chạy định kỳ, kiểm tra những Source nào “due” (dựa vào fetch_interval)
-    Nếu có team_code, chỉ check những Source.belongs_to team đó.
+    Task gn ging cron: chy nh k, kim tra nhng Source no due (da vo fetch_interval)
+    Nu c team_code, ch check nhng Source.belongs_to team .
     """
     try:
         now = timezone.now()
 
-        # Lọc những Source cần fetch: is_active=True, và (last_fetched là NULL hoặc đã quá fetch_interval),
-        # thêm điều kiện team nếu team_code được truyền vào.
+        # Lc nhng Source cn fetch: is_active=True, v (last_fetched l NULL hoc  qu fetch_interval),
+        # thm iu kin team nu team_code c truyn vo.
         base_qs = Source.objects.filter(is_active=True)
         if team_code:
             base_qs = base_qs.filter(team__code=team_code)
 
-        # extra để tính điều kiện về thời gian
+        # extra  tnh iu kin v thi gian
         sources_due = base_qs.extra(
             where=['last_fetched IS NULL OR (EXTRACT(EPOCH FROM %s) - EXTRACT(EPOCH FROM last_fetched)) >= fetch_interval'],
             params=[now]
@@ -108,7 +108,7 @@ def scheduled_collection(team_code=None):
 
         results = []
         for source in sources_due:
-            # Truyền team_code khi delay, để collect_data_from_source lọc thêm.
+            # Truyn team_code khi delay,  collect_data_from_source lc thm.
             results.append(
                 collect_data_from_source.delay(source.id, team_code)
             )
@@ -142,39 +142,39 @@ def update_article_and_config_sync(article_id, ai_content, ai_type, config_id):
 
 def sanitize_json_content(content):
     """
-    Làm sạch nội dung để tránh lỗi JSON parsing trong Teams
+    Lm sch ni dung  trnh li JSON parsing trong Teams
     """
     if not content:
         return content
     
-    # Escape các ký tự đặc biệt JSON
+    # Escape cc k t c bit JSON
     content = str(content)
     
-    # Escape backslashes trước
+    # Escape backslashes trc
     content = content.replace('\\', '\\\\')
     
     # Escape quotes
     content = content.replace('"', '\\"')
     
-    # Escape newlines và tabs
+    # Escape newlines v tabs
     content = content.replace('\n', '\\n')
     content = content.replace('\r', '\\r')
     content = content.replace('\t', '\\t')
     
-    # Loại bỏ các ký tự control characters
+    # Loi b cc k t control characters
     content = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', content)
     
-    # Escape HTML entities nếu có
+    # Escape HTML entities nu c
     content = html.escape(content, quote=False)
     
     return content
 
 def validate_json_structure(data):
     """
-    Kiểm tra và sửa cấu trúc JSON
+    Kim tra v sa cu trc JSON
     """
     try:
-        # Thử parse để kiểm tra tính hợp lệ
+        # Th parse  kim tra tnh hp l
         json.dumps(data)
         return True
     except (TypeError, ValueError) as e:
@@ -183,15 +183,15 @@ def validate_json_structure(data):
 
 @shared_task
 def process_openrouter_job(team_code=None):
-    logger.info('[Celery Beat] Đã gọi task process_openrouter_job (team_code=%s)', team_code)
+    logger.info('[Celery Beat]  gi task process_openrouter_job (team_code=%s)', team_code)
     try:
-        # Kiểm tra job config
+        # Kim tra job config
         config = JobConfig.objects.filter(job_type='openrouter').first()
         if not config or not config.enabled:
             logger.info("OpenRouter job is disabled")
             return {'success': True, 'result': None}
 
-        # Chỉ xử lý article từ source active, chưa xử lý AI và chưa bị claim bởi worker khác.
+        # Ch x l article t source active, cha x l AI v cha b claim bi worker khc.
         base_query = Article.objects.filter(
             is_ai_processed=False,
             is_ai_processing=False,
@@ -218,14 +218,14 @@ def process_openrouter_job(team_code=None):
         if selected_source_id is None:
             selected_source_id = source_ids[0]
 
-        # Tạo danh sách thử theo thứ tự RR (source hiện tại trước, sau đó quay vòng)
+        # To danh sch th theo th t RR (source hin ti trc, sau  quay vng)
         start_idx = source_ids.index(selected_source_id)
         rr_source_ids = source_ids[start_idx:] + source_ids[:start_idx]
 
         article = None
         claimed_source_id = None
 
-        # Claim 1 bài theo thứ tự RR, tránh xử lý trùng khi có nhiều worker/task chạy đồng thời.
+        # Claim 1 bi theo th t RR, trnh x l trng khi c nhiu worker/task chy ng thi.
         for sid in rr_source_ids:
             with transaction.atomic():
                 candidate = (
@@ -253,7 +253,7 @@ def process_openrouter_job(team_code=None):
             logger.info(f"No claimable article found (team_code={team_code})")
             return {'success': True, 'result': None}
 
-        # Lấy team code thực tế từ article.source.team
+        # Ly team code thc t t article.source.team
         real_team_code = None
         if article.source and article.source.team:
             real_team_code = article.source.team.code
@@ -262,15 +262,15 @@ def process_openrouter_job(team_code=None):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            # Gọi AI (hàm này sẽ tự động gửi thông báo Telegram nếu có cấu hình)
-            logger.info("Step 4: Gọi call_openrouter_ai")
+            # Gi AI (hm ny s t ng gi thng bo Telegram nu c cu hnh)
+            logger.info("Step 4: Gi call_openrouter_ai")
             ai_content = loop.run_until_complete(
                 call_openrouter_ai(article.content, article.url, ai_type=real_team_code)
             )
-            logger.info("Step 5: Đã hoàn thành xử lý AI và gửi thông báo")
+            logger.info("Step 5:  hon thnh x l AI v gi thng bo")
 
         except Exception as e:
-            # Nhả claim nếu gọi AI lỗi để lần sau có thể retry.
+            # Nh claim nu gi AI li  ln sau c th retry.
             try:
                 Article.objects.filter(id=article.id).update(is_ai_processing=False)
             except Exception as release_err:
@@ -283,13 +283,13 @@ def process_openrouter_job(team_code=None):
             except Exception as e:
                 logger.error(f"Error closing event loop: {e}")
 
-        # Cập nhật bài viết và con trỏ RR source
-        logger.info("Step 6: Cập nhật bài viết và config")
+        # Cp nht bi vit v con tr RR source
+        logger.info("Step 6: Cp nht bi vit v config")
         try:
             with transaction.atomic():
                 article_obj = Article.objects.select_for_update().get(id=article.id)
 
-                # Nếu AI lỗi/fallback thì KHÔNG đánh dấu đã xử lý
+                # Nu AI li/fallback th KHNG nh du  x l
                 if (not ai_content) or str(ai_content).startswith("AI_PROCESSING_ERROR:") or str(ai_content).strip() == (article_obj.content or '').strip():
                     article_obj.is_ai_processing = False
                     article_obj.save(update_fields=['is_ai_processing'])
@@ -306,7 +306,7 @@ def process_openrouter_job(team_code=None):
                 article_obj.is_ai_processing = False
                 article_obj.ai_type = real_team_code
 
-                # Chuẩn hoá tiêu đề hiển thị: ưu tiên bullet đầu tiên trong AI content (tiếng Việt)
+                # Chun ho tiu  hin th: u tin bullet u tin trong AI content (ting Vit)
                 try:
                     title_candidate = None
                     for ln in (ai_content or '').split('\n'):
@@ -315,7 +315,7 @@ def process_openrouter_job(team_code=None):
                             title_candidate = ln[2:].strip().rstrip(' .;:')
                             break
                     if title_candidate:
-                        normalized_title = f"Phỏng vấn: {title_candidate}"
+                        normalized_title = f"Phng vn: {title_candidate}"
                         article_obj.title = normalized_title[:140]
                 except Exception:
                     pass
@@ -334,7 +334,7 @@ def process_openrouter_job(team_code=None):
                 logger.error(f"Error releasing AI processing lock after update failure: {release_err}")
             return {'success': False, 'error': str(e)}
 
-        logger.info("Step 7: Hoàn thành xử lý")
+        logger.info("Step 7: Hon thnh x l")
         return {'success': True, 'result': True}
 
     except Exception as e:

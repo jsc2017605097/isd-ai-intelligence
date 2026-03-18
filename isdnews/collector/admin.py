@@ -13,8 +13,8 @@ class TeamAdmin(admin.ModelAdmin):
     ordering = ['name']
     
     def get_readonly_fields(self, request, obj=None):
-        if obj:  # Nếu đang edit
-            return ['code']  # Không cho phép sửa code khi đã tạo
+        if obj:  # Nu ang edit
+            return ['code']  # Khng cho php sa code khi  to
         return []
 
 @admin.register(Source)
@@ -35,9 +35,9 @@ class SourceAdmin(admin.ModelAdmin):
     
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
-        if not obj:  # Chỉ áp dụng cho form tạo mới
+        if not obj:  # Ch p dng cho form to mi
             form.base_fields['params'].initial = {
-                "prompt": "hãy lấy các url liên quan đến [nội dung bạn cần lấy] sau đó gửi lại cho tôi , yêu cầu dữ liệu trả về chỉ là 1 mảng các url, không được sai format như tôi yêu cầu"
+                "prompt": "hy ly cc url lin quan n [ni dung bn cn ly] sau  gi li cho ti , yu cu d liu tr v ch l 1 mng cc url, khng c sai format nh ti yu cu"
             }
         return form
 
@@ -72,19 +72,19 @@ class ArticleAdmin(admin.ModelAdmin):
         if obj.content and len(obj.content) > 100:
             return format_html('<span title="{}">{}&hellip;</span>', obj.content, obj.content[:100])
         return obj.content or ''
-    short_content.short_description = 'Nội dung'
+    short_content.short_description = 'Ni dung'
 
     def short_summary(self, obj):
         if obj.summary and len(obj.summary) > 100:
             return format_html('<span title="{}">{}&hellip;</span>', obj.summary, obj.summary[:100])
         return obj.summary or ''
-    short_summary.short_description = 'Tóm tắt'
+    short_summary.short_description = 'Tm tt'
 
     def short_ai_content(self, obj):
         if obj.ai_content and len(obj.ai_content) > 100:
             return format_html('<span title="{}">{}&hellip;</span>', obj.ai_content, obj.ai_content[:100])
         return obj.ai_content or ''
-    short_ai_content.short_description = 'Nội dung AI'
+    short_ai_content.short_description = 'Ni dung AI'
 
     def team_name(self, obj):
         return obj.team_name
@@ -114,7 +114,7 @@ class AILogAdmin(admin.ModelAdmin):
     readonly_fields = [f.name for f in AILog._meta.fields]
     date_hierarchy = 'created_at'
     
-    # Thêm fields để hiển thị trong form
+    # Thm fields  hin th trong form
     fields = ('url', 'prompt', 'response', 'result', 'status', 
              'error_message', 'created_at')
 
@@ -131,7 +131,7 @@ class AILogAdmin(admin.ModelAdmin):
     short_result.short_description = 'Result'
     
     def get_team_name(self, obj):
-        """Lấy tên team từ article thông qua URL"""
+        """Ly tn team t article thng qua URL"""
         try:
             article = Article.objects.filter(url=obj.url).first()
             if article and article.source and article.source.team:
@@ -140,7 +140,7 @@ class AILogAdmin(admin.ModelAdmin):
             pass
         return '-'
     get_team_name.short_description = 'Team'
-    get_team_name.admin_order_field = 'url'  # Cho phép sắp xếp theo URL
+    get_team_name.admin_order_field = 'url'  # Cho php sp xp theo URL
 
 @admin.register(JobConfig)
 class JobConfigAdmin(admin.ModelAdmin):
@@ -165,7 +165,7 @@ class SystemConfigAdmin(admin.ModelAdmin):
     search_fields = ('key', 'description', 'value')
     readonly_fields = ('created_at', 'updated_at', 'key_type')
     
-    # Thêm fields để hiển thị trong form
+    # Thm fields  hin th trong form
     fields = ('key', 'value', 'key_type', 'team', 'description', 'is_active', 'created_at', 'updated_at')
     
     def get_form(self, request, obj=None, **kwargs):
@@ -175,7 +175,7 @@ class SystemConfigAdmin(admin.ModelAdmin):
         return form
     
     def get_masked_value(self, obj):
-        """Che giấu giá trị nhạy cảm như API key"""
+        """Che giu gi tr nhy cm nh API key"""
         if obj.key_type == 'api_key' and obj.value:
             return f"{obj.value[:4]}...{obj.value[-4:]}"
         elif obj.key_type == 'webhook':
@@ -184,7 +184,7 @@ class SystemConfigAdmin(admin.ModelAdmin):
     get_masked_value.short_description = 'Value'
 
 def get_app_list(self, request, app_label=None):
-    """Tùy chỉnh thứ tự hiển thị các model trong admin"""
+    """Ty chnh th t hin th cc model trong admin"""
     app_dict = self._build_app_dict(request, app_label)
     app_list = sorted(app_dict.values(), key=lambda x: x['name'].lower())
 
