@@ -22,6 +22,10 @@ def install():
     print("🚀 Đang cài đặt hệ sinh thái ISD...")
     is_windows = sys.platform.startswith('win')
     
+    # Hỏi người dùng về Redis
+    use_redis_input = input("❓ Sếp có muốn dùng Redis không? (Y/n): ").strip().lower()
+    use_redis = "True" if use_redis_input != 'n' else "False"
+
     # Tìm lệnh python phù hợp
     python_cmds = ["python", "py", "python3"]
     py_cmd = "python"
@@ -63,10 +67,13 @@ def install():
         
         if not (NEWS_DIR / ".env").exists():
             if (NEWS_DIR / ".env.example").exists():
-                import shutil
-                shutil.copy(str(NEWS_DIR / ".env.example"), str(NEWS_DIR / ".env"))
+                # Đọc .env.example và thay thế giá trị
+                example_content = (NEWS_DIR / ".env.example").read_text()
+                env_content = example_content.replace("USE_REDIS=True", f"USE_REDIS={use_redis}")
+                (NEWS_DIR / ".env").write_text(env_content)
+                print(f"✅ Đã tạo file .env (USE_REDIS={use_redis})")
             else:
-                (NEWS_DIR / ".env").write_text("DEBUG=False\nAI_PROVIDER=ollama\nOLLAMA_BASE_URL=http://127.0.0.1:11434\n")
+                (NEWS_DIR / ".env").write_text(f"DEBUG=False\nUSE_REDIS={use_redis}\nAI_PROVIDER=ollama\nOLLAMA_BASE_URL=http://127.0.0.1:11434\n")
         
         print("🗄️ Đang khởi tạo Database...")
         run_cmd(f'"{python_path}" manage.py migrate', cwd=NEWS_DIR)

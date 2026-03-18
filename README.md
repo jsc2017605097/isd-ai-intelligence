@@ -23,10 +23,11 @@ ISD (Intelligent Software Developer) là một hệ sinh thái tự động hóa
    chmod +x bootstrap.sh
    ./bootstrap.sh
    ```
-3. **Cài đặt hệ thống:**
+3. **Cài đặt hệ thống (Tự động):**
    ```bash
    isd install
    ```
+   *(Hệ thống sẽ hỏi sếp có muốn dùng Redis không. Nếu không có Redis, sếp chọn 'n' để chạy chế độ Database Broker).*
 
 ### 🪟 Cho Windows
 1. **Tải mã nguồn:**
@@ -39,6 +40,7 @@ ISD (Intelligent Software Developer) là một hệ sinh thái tự động hóa
 
 ## 🛠 Lệnh quản lý (ISD CLI)
 
+- `isd install`: Thiết lập môi trường (venv, npm, db). Có hỗ trợ chế độ **No-Redis** dùng SQLite làm Broker.
 - `isd start`: Khởi động toàn bộ pipeline và web dashboard.
 - `isd stop`: Dừng các dịch vụ đang chạy ngầm.
 - `isd restart`: Khởi động lại hệ thống.

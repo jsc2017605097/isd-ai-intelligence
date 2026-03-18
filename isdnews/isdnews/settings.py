@@ -161,8 +161,18 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Celery configuration
-CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
-CELERY_RESULT_BACKEND = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
+USE_REDIS = os.getenv('USE_REDIS', 'True') == 'True'
+
+if USE_REDIS:
+    CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
+    CELERY_RESULT_BACKEND = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
+else:
+    # No-Redis Mode: Use SQLite as the broker (requires sqlalchemy)
+    # This stores tasks in a separate sqlite file or the same one.
+    broker_db = BASE_DIR / 'broker.sqlite3'
+    CELERY_BROKER_URL = f'sqla+sqlite:///{broker_db}'
+    CELERY_RESULT_BACKEND = 'db+sqlite:///results.sqlite3'
+
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
