@@ -210,7 +210,7 @@ def create_superuser():
     print("👤 Đang tạo tài khoản Admin (Superuser)...")
     if NEWS_DIR.exists():
         is_windows = sys.platform.startswith('win')
-        python_path = NEWS_DIR / ("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
+        python_path = NEWS_DIR / "venv" / ("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
         run_cmd(f'"{python_path}" manage.py createsuperuser', cwd=NEWS_DIR)
 
 def usage():
