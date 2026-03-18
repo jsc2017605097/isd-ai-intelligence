@@ -15,9 +15,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env_path = BASE_DIR / '.env'
 if env_path.exists():
     load_dotenv(env_path)
-    print(f"[Celery] Đã load file .env từ {env_path}")
+    print(f"[Celery] Loaded .env file from {env_path}")
 else:
-    print(f"[Celery] Không tìm thấy file .env tại {env_path}")
+    print(f"[Celery] .env file not found at {env_path}")
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')

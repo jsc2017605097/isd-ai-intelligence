@@ -81,7 +81,13 @@ def install():
     # Setup Hub
     if HUB_DIR.exists():
         print("📦 Cấu hình Dashboard (isdnews-hub)...")
-        # Kiểm tra npm
+        
+        # Đảm bảo thư mục data tồn tại cho SQLite
+        hub_data_dir = HUB_DIR / "data"
+        if not hub_data_dir.exists():
+            hub_data_dir.mkdir(parents=True, exist_ok=True)
+            print("📁 Đã tạo thư mục data cho Hub.")
+
         run_cmd("npm install", cwd=HUB_DIR)
         if not (HUB_DIR / ".env").exists():
             # Đồng bộ đường dẫn DB (dùng đường dẫn tuyệt đối đã bọc ngoặc)
@@ -123,26 +129,29 @@ module.exports = {{
       script: 'manage.py',
       cwd: '{news_dir_esc}',
       interpreter: '{py_path}',
-      args: 'celery worker',
+      args: 'celery worker --loglevel=info',
       autorestart: true,
       watch: false,
-      max_memory_restart: '1G'
+      max_memory_restart: '1G',
+      windowsHide: true
     }},
     {{
       name: 'isd-beat',
       script: 'manage.py',
       cwd: '{news_dir_esc}',
       interpreter: '{py_path}',
-      args: 'celery beat',
+      args: 'celery beat --loglevel=info',
       autorestart: true,
-      watch: false
+      watch: false,
+      windowsHide: true
     }},
     {{
       name: 'isd-api',
       script: 'apps/api/server.js',
       cwd: '{hub_dir_esc}',
       autorestart: true,
-      watch: false
+      watch: false,
+      windowsHide: true
     }}
   ]
 }};

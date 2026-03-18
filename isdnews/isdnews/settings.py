@@ -10,11 +10,11 @@ try:
     env_path = BASE_DIR / '.env'
     if env_path.exists():
         load_dotenv(env_path)
-        print(f"[Django Settings] Đã load file .env từ {env_path}")
+        print(f"[Django Settings] Loaded .env file from {env_path}")
     else:
-        print(f"[Django Settings] Không tìm thấy file .env tại {env_path}")
+        print(f"[Django Settings] .env file not found at {env_path}")
 except ImportError:
-    print("[Django Settings] python-dotenv chưa được cài đặt, bỏ qua load .env file")
+    print("[Django Settings] python-dotenv not installed, skipping .env load")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-7hzu-7mukz1)ryo*_wa1k)hh^m^k*npzpua2xkg866^p&lkid6')
