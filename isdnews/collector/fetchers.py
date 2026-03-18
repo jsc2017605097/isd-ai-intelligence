@@ -216,7 +216,14 @@ class DataCollector:
         try:
             data = await RSSFetcher(source).fetch()
             existing = set(await sync_to_async(list)(Article.objects.filter(url__in=[a['url'] for a in data]).values_list('url', flat=True)))
-            news = [a for a in data if a['url'] not in existing][:5]
+            # Lấy limit từ JobConfig
+            def _get_crawl_limit():
+                from .models import JobConfig
+                cfg = JobConfig.objects.filter(job_type='crawl').first()
+                return cfg.limit if cfg else 5
+            
+            crawl_limit = await asyncio.to_thread(_get_crawl_limit)
+            news = [a for a in data if a['url'] not in existing][:crawl_limit]
             for item in news:
                 art, created = await create_article(url=item['url'], defaults={'title': item['title'], 'source': source, 'published_at': item['published_at'], 'summary': item.get('summary', '')})
                 if created:
