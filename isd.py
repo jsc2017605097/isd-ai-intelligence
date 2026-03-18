@@ -129,9 +129,10 @@ module.exports = {{
   apps : [
     {{
       name: 'isd-core',
-      script: '{py_path}',
+      script: 'manage.py',
       cwd: '{news_dir_esc}',
-      args: 'manage.py runserver 0.0.0.0:8000',
+      interpreter: '{py_path}',
+      args: 'runserver 0.0.0.0:8000',
       autorestart: true,
       watch: false,
       windowsHide: true,
