@@ -136,6 +136,15 @@ def start():
 module.exports = {{
   apps : [
     {{
+      name: 'isd-core',
+      script: '{py_path}',
+      cwd: '{news_dir_esc}',
+      args: 'manage.py runserver 0.0.0.0:8000',
+      autorestart: true,
+      watch: false,
+      windowsHide: true
+    }},
+    {{
       name: 'isd-worker',
       script: '{py_path}',
       cwd: '{news_dir_esc}',
@@ -175,7 +184,7 @@ module.exports = {{
 
 def stop():
     print("⏹️ Đang dừng các dịch vụ ISD...")
-    run_cmd("pm2 stop isd-worker isd-beat isd-api || true")
+    run_cmd("pm2 stop isd-worker isd-beat isd-api isd-core || true")
 
 def restart():
     print("🔄 Đang khởi động lại các dịch vụ ISD...")
@@ -197,11 +206,19 @@ def set_model(model_name):
         env_path.write_text("\n".join(new_lines))
     restart()
 
+def create_superuser():
+    print("👤 Đang tạo tài khoản Admin (Superuser)...")
+    if NEWS_DIR.exists():
+        is_windows = sys.platform.startswith('win')
+        python_path = NEWS_DIR / ("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
+        run_cmd(f'"{python_path}" manage.py createsuperuser', cwd=NEWS_DIR)
+
 def usage():
     print("""
 ISD Ecosystem CLI
 Sử dụng:
   isd install      - Cài đặt môi trường từ đầu (venv, npm, db)
+  isd admin        - Tạo tài khoản Admin (Superuser)
   isd start        - Chạy tất cả dịch vụ bằng PM2
   isd stop         - Dừng tất cả dịch vụ
   isd restart      - Khởi động lại dịch vụ
@@ -216,6 +233,7 @@ if __name__ == "__main__":
     
     cmd = sys.argv[1]
     if cmd == "install": install()
+    elif cmd == "admin": create_superuser()
     elif cmd == "start": start()
     elif cmd == "stop": stop()
     elif cmd == "restart": restart()
