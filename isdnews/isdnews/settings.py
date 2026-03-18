@@ -3,6 +3,13 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(BASE_DIR, '.env'))
+except ImportError:
+    pass
+
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-for-local-dev')
 DEBUG = True
 ALLOWED_HOSTS = ['*']
