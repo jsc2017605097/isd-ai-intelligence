@@ -156,26 +156,65 @@ def configure_ai():
     print("🔄 Restarting services to apply changes...")
     restart()
 
+def run_django_script(script_content):
+    """Executes a Django script robustly by writing to a temp file first"""
+    temp_script = NEWS_DIR / "_temp_script.py"
+    full_content = f"""
+import os, sys, django
+sys.path.append(os.getcwd())
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
+django.setup()
+{script_content}
+"""
+    temp_script.write_text(full_content, encoding='utf-8')
+    try:
+        is_win = sys.platform.startswith('win')
+        py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
+        subprocess.check_call(f'"{py}" _temp_script.py', cwd=NEWS_DIR, shell=True)
+    finally:
+        if temp_script.exists(): temp_script.unlink()
+
+def configure_telegram_bot():
+    print("\n--- 🤖 Telegram Bot Configuration ---")
+    token = input("Enter your Telegram Bot Token: ").strip()
+    chat_id = input("Enter your Default Telegram Chat ID: ").strip()
+    
+    if not token:
+        print("⚠️ Bot Token is empty, skipping...")
+        return
+
+    for env_path in [NEWS_DIR / ".env", HUB_DIR / ".env"]:
+        if not env_path.exists(): continue
+        lines = env_path.read_text().splitlines()
+        new_lines = []
+        updates = {"TELEGRAM_BOT_TOKEN": token, "TELEGRAM_CHAT_ID": chat_id}
+        
+        seen = set()
+        for line in lines:
+            if "=" not in line: 
+                new_lines.append(line); continue
+            k = line.split("=")[0]
+            if k in updates:
+                new_lines.append(f"{k}={updates[k]}")
+                seen.add(k)
+            else: new_lines.append(line)
+        for k, v in updates.items():
+            if k not in seen: new_lines.append(f"{k}={v}")
+        env_path.write_text("\n".join(new_lines))
+    print("✅ Telegram Bot configured.")
+
 def setup_wizard():
     print("\n--- 🧙 ISD First-Run Wizard ---")
-    print("Let's set up your teams and data sources.")
+    print("Initializing teams and data sources...")
     
-    is_win = sys.platform.startswith('win')
-    py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
-
     while True:
-        team_name = input("\nEnter Team Name (e.g. Developer) or press Enter to skip: ").strip()
+        team_name = input("\nEnter Team Name (e.g. Developer) or press Enter to finish: ").strip()
         if not team_name: break
         
         team_code = input(f"Enter Team Code for '{team_name}' (e.g. dev): ").strip().lower()
         chat_id = input(f"Enter Telegram Chat ID for team '{team_code}' (optional): ").strip()
         
-        # Create Team in DB
-        create_team_script = f"""
-import os, sys, django
-sys.path.append('.')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
-django.setup()
+        script = f"""
 from collector.models import Team, SystemConfig
 team, _ = Team.objects.get_or_create(code='{team_code}', defaults={{'name': '{team_name}', 'is_active': True}})
 if '{chat_id}':
@@ -183,26 +222,16 @@ if '{chat_id}':
         key='telegram_chat_id', team=team,
         defaults={{'value': '{chat_id}', 'key_type': 'webhook', 'is_active': True}}
     )
-print("TEAM_OK")
 """
-        try:
-            subprocess.check_call(f'"{py}" -c "{create_team_script}"', cwd=NEWS_DIR, shell=True)
-            print(f"✅ Team '{team_name}' created.")
-        except:
-            print("❌ Failed to create team.")
-            continue
+        run_django_script(script)
+        print(f"✅ Team '{team_name}' ready.")
 
-        # Add Sources for this team
         while True:
             source_url = input(f"  Enter RSS URL for '{team_name}' (or Enter to finish team): ").strip()
             if not source_url: break
             source_name = input(f"  Enter Name for this source: ").strip()
             
-            add_source_script = f"""
-import os, sys, django
-sys.path.append('.')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
-django.setup()
+            s_script = f"""
 from collector.models import Team, Source
 team = Team.objects.get(code='{team_code}')
 Source.objects.get_or_create(
@@ -210,23 +239,15 @@ Source.objects.get_or_create(
     defaults={{'source': '{source_name}', 'type': 'rss', 'team': team, 'is_active': True, 'fetch_interval': 3600}}
 )
 """
-            try:
-                subprocess.check_call(f'"{py}" -c "{add_source_script}"', cwd=NEWS_DIR, shell=True)
-                print(f"  ✅ Source added.")
-            except:
-                print("  ❌ Failed to add source.")
+            run_django_script(s_script)
+            print(f"  ✅ Source '{source_name}' added.")
 
-    # Initialize Job Configs if empty
-    init_jobs_script = """
-import os, sys, django
-sys.path.append('.')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
-django.setup()
+    # Init Jobs
+    run_django_script("""
 from collector.models import JobConfig
 JobConfig.objects.get_or_create(job_type='crawl', defaults={'enabled': True, 'limit': 10})
 JobConfig.objects.get_or_create(job_type='openrouter', defaults={'enabled': True, 'limit': 5})
-"""
-    subprocess.check_call(f'"{py}" -c "{init_jobs_script}"', cwd=NEWS_DIR, shell=True)
+""")
     print("\n✅ System jobs initialized.")
 
 def install():
@@ -268,6 +289,8 @@ def install():
             else:
                 (NEWS_DIR / ".env").write_text(f"DEBUG=True\nUSE_REDIS={use_redis}\nAI_PROVIDER=ollama\n")
         
+        # Configure Bot and AI during install
+        configure_telegram_bot()
         configure_ai()
         print("🗄️ Migrating Database...")
         run_cmd(f'"{python_path}" manage.py migrate', cwd=NEWS_DIR)
@@ -413,16 +436,17 @@ def usage():
     print("""
 ISD Ecosystem CLI
 Sử dụng:
-  isd install         - Cài đặt môi trường từ đầu (venv, npm, db)
-  isd config ai       - Cấu hình AI Provider (Multi-Vendor + OAuth)
-  isd config telegram - Cấu hình Group Telegram riêng cho từng Team
-  isd config show     - Kiểm tra Model và Vendor hiện tại
-  isd admin           - Tạo tài khoản Admin (Superuser)
-  isd start           - Chạy tất cả dịch vụ bằng PM2
-  isd stop            - Dừng tất cả dịch vụ
-  isd restart         - Khởi động lại dịch vụ
-  isd status          - Xem tình trạng các dịch vụ
-  isd model <name>    - Đổi nhanh model (VD: isd model qwen3:30b)
+  isd install             - Cài đặt môi trường từ đầu (venv, npm, db)
+  isd config ai           - Cấu hình AI Provider (Multi-Vendor + OAuth)
+  isd config telegram     - Cấu hình Group Telegram riêng cho từng Team
+  isd config telegram-bot - Cấu hình Token Telegram Bot chính
+  isd config show         - Kiểm tra Model và Vendor hiện tại
+  isd admin               - Tạo tài khoản Admin (Superuser)
+  isd start               - Chạy tất cả dịch vụ bằng PM2
+  isd stop                - Dừng tất cả dịch vụ
+  isd restart             - Khởi động lại dịch vụ
+  isd status              - Xem tình trạng các dịch vụ
+  isd model <name>        - Đổi nhanh model (VD: isd model qwen3:30b)
     """)
 
 if __name__ == "__main__":
@@ -436,6 +460,7 @@ if __name__ == "__main__":
     elif cmd == "config" and len(sys.argv) > 2:
         if sys.argv[2] == "ai": configure_ai()
         elif sys.argv[2] == "telegram": configure_telegram()
+        elif sys.argv[2] == "telegram-bot": configure_telegram_bot()
         elif sys.argv[2] == "show": show_config()
         else: usage()
     elif cmd == "start": start()
