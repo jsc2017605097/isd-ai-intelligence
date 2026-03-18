@@ -101,7 +101,10 @@ def configure_ai():
         "AI_MODEL": "qwen3:30b-a3b" if provider == "ollama" else "gpt-4o"
     }
     if config["AI_AUTH_METHOD"] == "apikey":
-        if provider != "ollama":
+        if provider == "ollama":
+            config["OLLAMA_BASE_URL"] = input("Enter Ollama Base URL [default: http://127.0.0.1:11434]: ").strip() or "http://127.0.0.1:11434"
+            config["AI_MODEL"] = input(f"Enter Model Name [default: qwen3:30b-a3b]: ").strip() or "qwen3:30b-a3b"
+        elif provider != "ollama":
             config["AI_API_KEY"] = input(f"Enter {provider.upper()} API Key: ").strip()
             config["AI_MODEL"] = input(f"Enter Model Name [default: {config['AI_MODEL']}]: ").strip() or config["AI_MODEL"]
         if provider == "openai":

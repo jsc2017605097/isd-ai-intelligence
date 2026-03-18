@@ -42,15 +42,11 @@ function getLLMConfig() {
   } else if (provider === 'openrouter') {
     endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
+  } else if (provider === 'ollama') {
+    endpoint = (baseUrl.replace(/\/$/, '')) + '/api/chat';
   } else {
-    // Default Ollama/vLLM
-    if (!baseUrl) baseUrl = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
-    // Check if it's Ollama or vLLM style
-    if (baseUrl.includes('11434')) {
-        endpoint = baseUrl.replace(/\/$/, '') + '/v1/chat/completions';
-    } else {
-        endpoint = baseUrl.replace(/\/$/, '') + '/v1/chat/completions';
-    }
+    // Default fallback
+    endpoint = `${baseUrl}/v1/chat/completions`;
   }
 
   return { provider, model, endpoint, headers };
@@ -64,7 +60,11 @@ async function llmComplete({ messages, systemPrompt, temperature = 0.4 }) {
     payload = { model, system: systemPrompt, messages, max_tokens: 4096, temperature };
   } else if (provider === 'google') {
     payload = { contents: [{ role: 'user', parts: [{ text: `System: ${systemPrompt}\n\nUser: ${messages[messages.length-1].content}` }] }] };
+  } else if (provider === 'ollama') {
+    // Native Ollama Chat API
+    payload = { model, stream: false, messages: [{ role: 'system', content: systemPrompt }, ...messages], options: { temperature } };
   } else {
+    // OpenAI style
     payload = { model, messages: [{ role: 'system', content: systemPrompt }, ...messages], temperature };
   }
 
@@ -74,6 +74,7 @@ async function llmComplete({ messages, systemPrompt, temperature = 0.4 }) {
   const data = await resp.json();
   if (provider === 'anthropic') return data.content[0].text;
   if (provider === 'google') return data.candidates[0].content.parts[0].text;
+  if (provider === 'ollama') return data.message.content;
   return data.choices[0].message.content;
 }
 

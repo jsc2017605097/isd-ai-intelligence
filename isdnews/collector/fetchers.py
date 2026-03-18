@@ -255,6 +255,17 @@ Content: {content_for_ai}"""
         endpoint = (base_url or "https://api.openai.com/v1") + "/chat/completions"
         headers["Authorization"] = f"Bearer {api_key}"
         payload = {"model": configured_model, "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]}
+    elif provider == "ollama":
+        base = (os.getenv("OLLAMA_BASE_URL") or "http://127.0.0.1:11434").rstrip('/')
+        endpoint = f"{base}/api/chat"
+        payload = {
+            "model": configured_model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ]
+        }
     elif provider == "anthropic":
         endpoint = (base_url or "https://api.anthropic.com/v1") + "/messages"
         headers["x-api-key"] = api_key
