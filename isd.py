@@ -153,6 +153,8 @@ def configure_ai():
         env_path.write_text("\n".join(new_lines))
     
     print(f"✅ AI Configuration updated successfully for {provider.upper()}.")
+    print("🔄 Restarting services to apply changes...")
+    restart()
 
 def install():
     print("🚀 Installing ISD Ecosystem...")

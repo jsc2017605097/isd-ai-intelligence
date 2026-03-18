@@ -23,16 +23,18 @@ function getLLMConfig() {
   const provider = (process.env.AI_PROVIDER || 'ollama').toLowerCase();
   const apiKey = process.env.AI_API_KEY || '';
   const model = process.env.CHAT_MODEL || process.env.AI_MODEL || 'qwen3:30b-a3b';
-  let baseUrl = process.env.LLM_BASE_URL || process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
   
+  let baseUrl = process.env.LLM_BASE_URL || process.env.AI_BASE_URL || '';
   let endpoint = '';
   let headers = { 'Content-Type': 'application/json' };
 
   if (provider === 'openai') {
-    endpoint = (baseUrl.includes('/v1') ? baseUrl : `${baseUrl}/v1`) + '/chat/completions';
+    if (!baseUrl) baseUrl = 'https://api.openai.com/v1';
+    endpoint = (baseUrl.endsWith('/v1') ? baseUrl : `${baseUrl.replace(/\/$/, '')}/v1`) + '/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
   } else if (provider === 'anthropic') {
-    endpoint = 'https://api.anthropic.com/v1/messages';
+    if (!baseUrl) baseUrl = 'https://api.anthropic.com/v1';
+    endpoint = baseUrl.replace(/\/$/, '') + '/messages';
     headers['x-api-key'] = apiKey;
     headers['anthropic-version'] = '2023-06-01';
   } else if (provider === 'google') {
@@ -41,8 +43,14 @@ function getLLMConfig() {
     endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
   } else {
-    // Default Ollama
-    endpoint = `${baseUrl}/v1/chat/completions`; // Use OpenAI compatible endpoint of Ollama
+    // Default Ollama/vLLM
+    if (!baseUrl) baseUrl = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
+    // Check if it's Ollama or vLLM style
+    if (baseUrl.includes('11434')) {
+        endpoint = baseUrl.replace(/\/$/, '') + '/v1/chat/completions';
+    } else {
+        endpoint = baseUrl.replace(/\/$/, '') + '/v1/chat/completions';
+    }
   }
 
   return { provider, model, endpoint, headers };
