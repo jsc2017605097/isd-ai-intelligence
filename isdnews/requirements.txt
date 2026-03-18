@@ -11,3 +11,4 @@ certifi
 playwright
 asgiref
 sqlalchemy
+whitenoise
