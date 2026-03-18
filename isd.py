@@ -281,30 +281,77 @@ def install():
 
 def start():
     is_win = sys.platform.startswith('win')
-    # Sửa đường dẫn Python: phải vào thư mục venv và thêm đuôi .exe trên Windows
-    py_exec = "python.exe" if is_win else "python"
+    
+    # Sử dụng os.path để chuẩn hoá đường dẫn Windows/Linux
+    import os
+    
     venv_bin = "Scripts" if is_win else "bin"
-    py = str(NEWS_DIR / "venv" / venv_bin / py_exec).replace("\\", "\\\\")
+    py_exec = "python.exe" if is_win else "python"
     
-    news_esc = str(NEWS_DIR).replace("\\", "\\\\")
-    hub_esc = str(HUB_DIR).replace("\\", "\\\\")
-    pool = " --pool=solo" if is_win else ""
+    # Đường dẫn tuyệt đối chuẩn xác
+    py_path_raw = NEWS_DIR / "venv" / venv_bin / py_exec
     
-    print("▶️ Starting ISD Services...")
+    # Kiểm tra sự tồn tại của môi trường ảo trước khi chạy
+    if not py_path_raw.exists():
+        print(f"❌ Lỗi: Không tìm thấy môi trường ảo tại: {py_path_raw}")
+        print("👉 Sếp vui lòng chạy lệnh 'isd install' trước để khởi tạo môi trường nhé!")
+        return
+
+    # Chuẩn hoá đường dẫn cho file cấu hình JS (Sử dụng forward slashes cho PM2 trên Win là an toàn nhất)
+    py_path = str(py_path_raw).replace("\\", "/")
+    news_dir_path = str(NEWS_DIR).replace("\\", "/")
+    hub_dir_path = str(HUB_DIR).replace("\\", "/")
+    
+    pool_flag = " --pool=solo" if is_win else ""
+    
+    print(f"▶️ Đang khởi động các dịch vụ từ: {news_dir_path}")
+    
     try:
         subprocess.run("pm2 --version", shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except:
         print("❌ Error: 'pm2' not found. Install it: npm install -g pm2"); return
 
-    (BASE_DIR / "ecosystem.config.js").write_text(f"""
+    ecosystem_content = f"""
 module.exports = {{
   apps : [
-    {{ name: 'isd-core', script: 'manage.py', cwd: '{news_esc}', interpreter: '{py}', args: 'runserver 127.0.0.1:8000', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
-    {{ name: 'isd-worker', script: '{py}', cwd: '{news_esc}', args: '-m celery -A isdnews worker --loglevel=info{pool}', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
-    {{ name: 'isd-beat', script: '{py}', cwd: '{news_esc}', args: '-m celery -A isdnews beat --loglevel=info', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
-    {{ name: 'isd-api', script: 'apps/api/server.js', cwd: '{hub_esc}', windowsHide: true }}
+    {{
+      name: 'isd-core',
+      script: 'manage.py',
+      cwd: '{news_dir_path}',
+      interpreter: '{py_path}',
+      args: 'runserver 127.0.0.1:8000',
+      windowsHide: true,
+      env: {{ PYTHONPATH: '{news_dir_path}' }}
+    }},
+    {{
+      name: 'isd-worker',
+      script: '{py_path}',
+      cwd: '{news_dir_path}',
+      args: '-m celery -A isdnews worker --loglevel=info{pool_flag}',
+      windowsHide: true,
+      env: {{ PYTHONPATH: '{news_dir_path}' }}
+    }},
+    {{
+      name: 'isd-beat',
+      script: '{py_path}',
+      cwd: '{news_dir_path}',
+      args: '-m celery -A isdnews beat --loglevel=info',
+      windowsHide: true,
+      env: {{ PYTHONPATH: '{news_dir_path}' }}
+    }},
+    {{
+      name: 'isd-api',
+      script: 'apps/api/server.js',
+      cwd: '{hub_dir_path}',
+      windowsHide: true
+    }}
   ]
-}};""", encoding='utf-8')
+}};"""
+    (BASE_DIR / "ecosystem.config.js").write_text(ecosystem_content, encoding='utf-8')
+    
+    run_cmd("pm2 start ecosystem.config.js", cwd=BASE_DIR)
+    run_cmd("pm2 save")
+    print("\n✅ Hệ thống đã được khởi động! Sếp dùng 'pm2 status' để kiểm tra nhé.")
     run_cmd("pm2 start ecosystem.config.js", cwd=BASE_DIR)
     run_cmd("pm2 save")
     print("\n✅ Started.")
