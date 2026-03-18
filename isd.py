@@ -240,17 +240,45 @@ def stop(): run_cmd("pm2 stop isd-worker isd-beat isd-api isd-core || true")
 def restart(): stop(); start()
 def status(): run_cmd("pm2 list | grep isd || echo 'No services.'")
 
+def show_config():
+    print("\n--- 🔍 Current ISD Configuration ---")
+    env_path = NEWS_DIR / ".env"
+    if not env_path.exists():
+        print("❌ Configuration file (.env) not found. Run 'isd install' first.")
+        return
+
+    lines = env_path.read_text().splitlines()
+    config = {}
+    for line in lines:
+        if "=" in line:
+            k, v = line.split("=", 1)
+            config[k.strip()] = v.strip()
+
+    provider = config.get("AI_PROVIDER", "Not set")
+    model = config.get("AI_MODEL", "Not set")
+    auth = config.get("AI_AUTH_METHOD", "apikey")
+    redis = config.get("USE_REDIS", "True")
+
+    print(f"🤖 AI Provider : {provider.upper()}")
+    print(f"📦 AI Model    : {model}")
+    print(f"🔑 Auth Method : {'OAuth 2.0' if auth == 'oauth' else 'API Key'}")
+    print(f"💾 Using Redis : {'Yes' if redis == 'True' else 'No (SQLite Broker)'}")
+    print(f"📂 Install Dir : {BASE_DIR}")
+    print("-" * 35)
+
 def usage():
     print("""
 ISD Ecosystem CLI
-Usage:
-  isd install      - Full environment setup
-  isd config ai    - Configure AI LLM Provider (Multi-Vendor + OAuth)
-  isd admin        - Create Admin account
-  isd start        - Run services
-  isd stop         - Stop services
-  isd restart      - Restart services
-  isd status       - Show status
+Sử dụng:
+  isd install      - Cài đặt môi trường từ đầu (venv, npm, db)
+  isd config ai    - Cấu hình AI Provider (Multi-Vendor + OAuth)
+  isd config show  - Kiểm tra Model và Vendor hiện tại
+  isd admin        - Tạo tài khoản Admin (Superuser)
+  isd start        - Chạy tất cả dịch vụ bằng PM2
+  isd stop         - Dừng tất cả dịch vụ
+  isd restart      - Khởi động lại dịch vụ
+  isd status       - Xem tình trạng các dịch vụ
+  isd model <name> - Đổi nhanh model (VD: isd model qwen3:30b)
     """)
 
 if __name__ == "__main__":
@@ -261,9 +289,13 @@ if __name__ == "__main__":
         is_win = sys.platform.startswith('win')
         py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
         run_cmd(f'"{py}" manage.py createsuperuser', cwd=NEWS_DIR)
-    elif cmd == "config" and len(sys.argv) > 2 and sys.argv[2] == "ai": configure_ai()
+    elif cmd == "config" and len(sys.argv) > 2:
+        if sys.argv[2] == "ai": configure_ai()
+        elif sys.argv[2] == "show": show_config()
+        else: usage()
     elif cmd == "start": start()
     elif cmd == "stop": stop()
     elif cmd == "restart": restart()
     elif cmd == "status": status()
+    elif cmd == "model" and len(sys.argv) > 2: set_model(sys.argv[2])
     else: usage()
