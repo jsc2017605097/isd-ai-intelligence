@@ -202,8 +202,19 @@ async def call_openrouter_ai(content: str, url: str, ai_type: str = "dev") -> st
     if not content or not str(content).strip():
         return f"Cannot analyze content from source: {url}."
 
-    # Prompt Engineering (Senior Engineering Coach)
-    if ai_type == "dev":
+    # Prompt Engineering (Fetch from Team model if available)
+    try:
+        def _get_team_prompt():
+            team = Team.objects.filter(code=ai_type, is_active=True).first()
+            return team.system_prompt if team and team.system_prompt else None
+        custom_system_prompt = await asyncio.to_thread(_get_team_prompt)
+    except Exception as _p_err:
+        logger.warning(f"Error fetching team prompt: {_p_err}")
+        custom_system_prompt = None
+
+    if custom_system_prompt:
+        system_prompt = custom_system_prompt
+    elif ai_type == "dev":
         system_prompt = "You are a Senior Engineering Coach, specializing in developer interview prep."
     elif ai_type == "ba":
         system_prompt = "You are a Senior Business Analyst Coach."

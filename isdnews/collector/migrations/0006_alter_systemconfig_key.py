@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='systemconfig',
             name='key',
-            field=models.CharField(choices=[('openrouter_api_key', 'OpenRouter API Key'), ('teams_webhook', 'Teams Webhook URL'), ('agentql_api_key', 'AgentQL API Key')], help_text='Chn loi cu hnh cn thit lp', max_length=100),
+            field=models.CharField(choices=[('openrouter_api_key', 'OpenRouter API Key'), ('teams_webhook', 'Teams Webhook URL'), ('agentql_api_key', 'AgentQL API Key')], help_text='Chọn loại cấu hình cần thiết lập', max_length=100),
         ),
     ]

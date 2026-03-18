@@ -289,8 +289,14 @@ def install():
             t_name = input("\nTeam Name (e.g. Developer) [Enter to finish]: ").strip()
             if not t_name: break
             t_code = input(f"Team Code for '{t_name}': ").strip().lower()
+            
+            default_p = "You are a Senior Engineering Coach, specializing in developer interview prep. Focus on production, trade-offs, and debugging. Response in Vietnamese."
+            print(f"Default Prompt: {default_p}")
+            t_prompt = input("Custom System Prompt [Enter for default]: ").strip() or default_p
+            
             t_chat = input(f"Telegram Chat ID for '{t_code}' [optional]: ").strip()
-            script = f"from collector.models import Team, SystemConfig; team, _ = Team.objects.get_or_create(code='{t_code}', defaults={{'name': '{t_name}', 'is_active': True}}); \nif '{t_chat}': SystemConfig.objects.update_or_create(key='telegram_chat_id', team=team, defaults={{'value': '{t_chat}', 'key_type': 'webhook', 'is_active': True}})"
+            
+            script = f"from collector.models import Team, SystemConfig; team, _ = Team.objects.get_or_create(code='{t_code}', defaults={{'name': '{t_name}', 'system_prompt': \"\"\"{t_prompt}\"\"\", 'is_active': True}}); \nif not _: team.system_prompt = \"\"\"{t_prompt}\"\"\"; team.save(); \nif '{t_chat}': SystemConfig.objects.update_or_create(key='telegram_chat_id', team=team, defaults={{'value': '{t_chat}', 'key_type': 'webhook', 'is_active': True}})"
             run_django_script(script)
             while True:
                 s_url = input(f"  RSS URL for '{t_name}' [Enter to finish]: ").strip()

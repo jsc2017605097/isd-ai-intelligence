@@ -9,6 +9,7 @@ class Team(models.Model):
     code = models.CharField(max_length=20, unique=True, help_text="M code ca team (v d: dev, ba, system)")
     name = models.CharField(max_length=100, help_text="Tn y  ca team")
     description = models.TextField(blank=True, help_text="M t v team")
+    system_prompt = models.TextField(blank=True, null=True, help_text="Custom System Prompt for this team")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
