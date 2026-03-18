@@ -281,10 +281,21 @@ def install():
 
 def start():
     is_win = sys.platform.startswith('win')
-    py = str(NEWS_DIR / ("Scripts" if is_win else "bin") / "python").replace("\\", "\\\\")
+    # Sửa đường dẫn Python: phải vào thư mục venv và thêm đuôi .exe trên Windows
+    py_exec = "python.exe" if is_win else "python"
+    venv_bin = "Scripts" if is_win else "bin"
+    py = str(NEWS_DIR / "venv" / venv_bin / py_exec).replace("\\", "\\\\")
+    
     news_esc = str(NEWS_DIR).replace("\\", "\\\\")
     hub_esc = str(HUB_DIR).replace("\\", "\\\\")
     pool = " --pool=solo" if is_win else ""
+    
+    print("▶️ Starting ISD Services...")
+    try:
+        subprocess.run("pm2 --version", shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except:
+        print("❌ Error: 'pm2' not found. Install it: npm install -g pm2"); return
+
     (BASE_DIR / "ecosystem.config.js").write_text(f"""
 module.exports = {{
   apps : [
