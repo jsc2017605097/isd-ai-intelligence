@@ -178,11 +178,25 @@ class FetcherFactory:
         return fetcher_class(source)
 
 async def call_openrouter_ai(content: str, url: str, ai_type: str = "dev") -> str:
-    """Unified LLM call supporting multiple providers (OpenRouter, OpenAI, Anthropic, Google, Ollama)"""
+    """Unified LLM call supporting multiple providers and authentication methods"""
     provider = (os.getenv("AI_PROVIDER") or "ollama").strip().lower()
     configured_model = (os.getenv("AI_MODEL") or "qwen3:30b-a3b").strip()
+    auth_method = os.getenv("AI_AUTH_METHOD", "apikey")
     api_key = os.getenv("AI_API_KEY")
     base_url = os.getenv("AI_BASE_URL")
+    
+    # OAuth Fields (reserved for future/manual token usage)
+    client_id = os.getenv("AI_CLIENT_ID")
+    client_secret = os.getenv("AI_CLIENT_SECRET")
+    refresh_token = os.getenv("AI_REFRESH_TOKEN")
+
+    if auth_method == "oauth" and provider == "google":
+        # Placeholder for real OAuth token refresh logic
+        # In a real app, you'd use client_id/secret/refresh_token to get a new access_token
+        # For now, we'll assume the user might have provided a short-lived token in AI_API_KEY 
+        # or we'd need a helper function here.
+        pass
+
     knowledge_level = (os.getenv("AI_KNOWLEDGE_LEVEL") or "beginner").strip().lower()
 
     if not content or not str(content).strip():

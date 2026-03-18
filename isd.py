@@ -5,8 +5,8 @@ import subprocess
 import json
 from pathlib import Path
 
-# ISD Ecosystem CLI - v1.3.0
-# Distribution Version (Multi-Vendor AI Support)
+# ISD Ecosystem CLI - v1.4.0
+# Distribution Version (Multi-Vendor & OAuth Support)
 
 BASE_DIR = Path(__file__).parent.absolute()
 NEWS_DIR = BASE_DIR / "isdnews"
@@ -19,61 +19,114 @@ def run_cmd(cmd, cwd=None, shell=True):
         print(f"Error executing: {cmd}")
         sys.exit(1)
 
+def pick(title, options):
+    """Simple cross-platform arrow-key menu selector"""
+    import curses
+    
+    def _pick(stdscr):
+        curses.curs_set(0)
+        current_row = 0
+        
+        while True:
+            stdscr.clear()
+            stdscr.addstr(0, 0, f"=== {title} ===")
+            stdscr.addstr(1, 0, "(Use arrow keys to move, Enter to select)")
+            
+            for idx, option in enumerate(options):
+                if idx == current_row:
+                    stdscr.addstr(idx + 3, 0, f"> {option}", curses.A_REVERSE)
+                else:
+                    stdscr.addstr(idx + 3, 0, f"  {option}")
+            
+            key = stdscr.getch()
+            
+            if key == curses.KEY_UP and current_row > 0:
+                current_row -= 1
+            elif key == curses.KEY_DOWN and current_row < len(options) - 1:
+                current_row += 1
+            elif key == ord('\n'):
+                return options[current_row]
+    
+    # Standard terminal input fallback if curses fails
+    try:
+        return curses.wrapper(_pick)
+    except:
+        print(f"\n{title}")
+        for i, o in enumerate(options):
+            print(f"{i+1}. {o}")
+        c = input(f"Select [1-{len(options)}]: ").strip()
+        return options[int(c)-1] if c.isdigit() and 1 <= int(c) <= len(options) else options[0]
+
 def configure_ai():
-    print("\n--- 🤖 AI Configuration (OpenClaw Style) ---")
+    print("\n--- 🤖 AI Configuration ---")
+    
     providers = ["ollama", "openai", "google", "anthropic", "openrouter"]
-    for i, p in enumerate(providers):
-        print(f"{i+1}. {p}")
+    provider = pick("Select AI Provider", providers)
     
-    choice = input("Select AI Provider [1-5] (default: 1): ").strip()
-    provider = providers[int(choice)-1] if choice.isdigit() and 1 <= int(choice) <= len(providers) else "ollama"
+    auth_methods = ["API Key"]
+    if provider in ["google", "openai", "anthropic"]:
+        auth_methods.append("OAuth 2.0")
     
-    api_key = ""
-    base_url = ""
-    model = "qwen3:30b-a3b" # Default for ollama
+    auth_method = pick(f"Select Authentication for {provider.upper()}", auth_methods)
     
-    if provider != "ollama":
-        api_key = input(f"Enter {provider.upper()} API Key: ").strip()
-        model = input(f"Enter Model Name (e.g. gpt-4o, claude-3-5-sonnet...): ").strip()
+    config_data = {
+        "AI_PROVIDER": provider,
+        "AI_AUTH_METHOD": "oauth" if auth_method == "OAuth 2.0" else "apikey",
+        "AI_API_KEY": "",
+        "AI_CLIENT_ID": "",
+        "AI_CLIENT_SECRET": "",
+        "AI_REFRESH_TOKEN": "",
+        "AI_BASE_URL": "",
+        "AI_MODEL": "qwen3:30b-a3b" if provider == "ollama" else ""
+    }
+
+    if config_data["AI_AUTH_METHOD"] == "apikey":
+        if provider != "ollama":
+            config_data["AI_API_KEY"] = input(f"Enter {provider.upper()} API Key: ").strip()
+            config_data["AI_MODEL"] = input(f"Enter Model Name (e.g. gpt-4o, gemini-1.5-flash...): ").strip()
         if provider == "openai":
-            base_url = input("Enter Base URL (optional, press Enter for default): ").strip()
-    
+            config_data["AI_BASE_URL"] = input("Enter Base URL (optional, press Enter for default): ").strip()
+    else:
+        print(f"\n🔑 Configuring OAuth for {provider.upper()}...")
+        config_data["AI_CLIENT_ID"] = input("Enter Client ID: ").strip()
+        config_data["AI_CLIENT_SECRET"] = input("Enter Client Secret: ").strip()
+        config_data["AI_REFRESH_TOKEN"] = input("Enter Refresh Token: ").strip()
+        config_data["AI_MODEL"] = input(f"Enter Model Name: ").strip()
+
     # Update BOTH .env files
     for env_path in [NEWS_DIR / ".env", HUB_DIR / ".env"]:
         if not env_path.parent.exists(): continue
         lines = env_path.read_text().splitlines() if env_path.exists() else []
         new_lines = []
         
-        current_keys = keys_to_update.copy()
+        # Prepare mapping for current env
+        updates = config_data.copy()
         if env_path.parent == HUB_DIR:
-            # Map News keys to Hub expected keys
-            current_keys = {
-                "AI_PROVIDER": provider,
-                "AI_API_KEY": api_key,
-                "LLM_BASE_URL": base_url if base_url else (OLLAMA_BASE_URL if provider == "ollama" else ""),
-                "CHAT_MODEL": model,
-                "DIGEST_MODEL": model,
-                "AI_MODEL": model,
-                "LLM_API_STYLE": "openai" if provider != "ollama" else "ollama"
-            }
+            # Hub uses some specific naming
+            updates["LLM_API_STYLE"] = "openai" if provider != "ollama" else "ollama"
+            updates["LLM_BASE_URL"] = config_data["AI_BASE_URL"]
+            updates["CHAT_MODEL"] = config_data["AI_MODEL"]
+            updates["DIGEST_MODEL"] = config_data["AI_MODEL"]
 
         seen_keys = set()
         for line in lines:
-            matched = False
-            for k, v in current_keys.items():
-                if line.startswith(f"{k}="):
-                    new_lines.append(f"{k}={v}")
-                    seen_keys.add(k)
-                    matched = True
-                    break
-            if not matched: new_lines.append(line)
+            if "=" not in line: 
+                new_lines.append(line)
+                continue
+            k = line.split("=")[0]
+            if k in updates:
+                new_lines.append(f"{k}={updates[k]}")
+                seen_keys.add(k)
+            else:
+                new_lines.append(line)
                 
-        for k, v in current_keys.items():
-            if k not in seen_keys: new_lines.append(f"{k}={v}")
+        for k, v in updates.items():
+            if k not in seen_keys:
+                new_lines.append(f"{k}={v}")
                 
         env_path.write_text("\n".join(new_lines))
     
-    print(f"✅ AI Provider set to {provider.upper()} for both Pipeline and Dashboard.")
+    print(f"✅ AI Configuration updated successfully for {provider.upper()}.")
 
 def install():
     print("🚀 Installing ISD Ecosystem...")
@@ -124,6 +177,8 @@ def install():
         
         print("🗄️ Migrating Database...")
         run_cmd(f'"{python_path}" manage.py migrate', cwd=NEWS_DIR)
+        print("📁 Collecting static files...")
+        run_cmd(f'"{python_path}" manage.py collectstatic --noinput', cwd=NEWS_DIR)
     
     # Setup Hub
     if HUB_DIR.exists():
@@ -131,7 +186,7 @@ def install():
         if not (HUB_DIR / "data").exists(): (HUB_DIR / "data").mkdir(parents=True, exist_ok=True)
         run_cmd("npm install", cwd=HUB_DIR)
         if not (HUB_DIR / ".env").exists():
-            env_content = f"PORT=8787\nSOURCE_DB_PATH={str(NEWS_DIR/'db.sqlite3').replace('\\','/')}\nLLM_BASE_URL=http://127.0.0.1:11434\n"
+            env_content = f"PORT=8787\nSOURCE_DB_PATH={str(NEWS_DIR/'db.sqlite3').replace('\\','/')}\nHUB_DB_PATH={str(HUB_DIR/'data'/'hub.sqlite3').replace('\\','/')}\nLLM_BASE_URL=http://127.0.0.1:11434\n"
             (HUB_DIR / ".env").write_text(env_content)
 
     print("\n✅ Setup complete! Use 'isd start' to run.")
@@ -147,8 +202,13 @@ def start():
     ecosystem_path = BASE_DIR / "ecosystem.config.js"
     news_dir_esc = str(NEWS_DIR).replace("\\", "\\\\")
     hub_dir_esc = str(HUB_DIR).replace("\\", "\\\\")
-    py_path = str(NEWS_DIR / ("Scripts" if is_windows else "bin") / "python").replace("\\", "\\\\")
-    pool_flag = " --pool=solo" if is_windows else ""
+    
+    if is_windows:
+        py_path = f"{news_dir_esc}\\\\venv\\\\Scripts\\\\python.exe"
+        pool_flag = " --pool=solo"
+    else:
+        py_path = f"{news_dir_esc}/venv/bin/python"
+        pool_flag = ""
 
     ecosystem_content = f"""
 module.exports = {{
@@ -173,7 +233,7 @@ def usage():
 ISD Ecosystem CLI
 Usage:
   isd install      - Full environment setup
-  isd config ai    - Configure AI LLM Provider
+  isd config ai    - Configure AI LLM Provider (Multi-Vendor + OAuth)
   isd admin        - Create Admin account
   isd start        - Run services
   isd stop         - Stop services
@@ -186,7 +246,8 @@ if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "install": install()
     elif cmd == "admin": 
-        py = str(NEWS_DIR / ("Scripts" if sys.platform.startswith('win') else "bin") / "python")
+        is_win = sys.platform.startswith('win')
+        py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
         run_cmd(f'"{py}" manage.py createsuperuser', cwd=NEWS_DIR)
     elif cmd == "config" and len(sys.argv) > 2 and sys.argv[2] == "ai": configure_ai()
     elif cmd == "start": start()

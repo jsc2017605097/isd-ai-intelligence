@@ -12,3 +12,5 @@ playwright
 asgiref
 sqlalchemy
 whitenoise
+inquirer
+whitenoise
