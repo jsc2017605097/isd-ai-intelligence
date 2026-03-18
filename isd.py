@@ -156,6 +156,79 @@ def configure_ai():
     print("🔄 Restarting services to apply changes...")
     restart()
 
+def setup_wizard():
+    print("\n--- 🧙 ISD First-Run Wizard ---")
+    print("Let's set up your teams and data sources.")
+    
+    is_win = sys.platform.startswith('win')
+    py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
+
+    while True:
+        team_name = input("\nEnter Team Name (e.g. Developer) or press Enter to skip: ").strip()
+        if not team_name: break
+        
+        team_code = input(f"Enter Team Code for '{team_name}' (e.g. dev): ").strip().lower()
+        chat_id = input(f"Enter Telegram Chat ID for team '{team_code}' (optional): ").strip()
+        
+        # Create Team in DB
+        create_team_script = f"""
+import os, sys, django
+sys.path.append('.')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
+django.setup()
+from collector.models import Team, SystemConfig
+team, _ = Team.objects.get_or_create(code='{team_code}', defaults={{'name': '{team_name}', 'is_active': True}})
+if '{chat_id}':
+    SystemConfig.objects.update_or_create(
+        key='telegram_chat_id', team=team,
+        defaults={{'value': '{chat_id}', 'key_type': 'webhook', 'is_active': True}}
+    )
+print("TEAM_OK")
+"""
+        try:
+            subprocess.check_call(f'"{py}" -c "{create_team_script}"', cwd=NEWS_DIR, shell=True)
+            print(f"✅ Team '{team_name}' created.")
+        except:
+            print("❌ Failed to create team.")
+            continue
+
+        # Add Sources for this team
+        while True:
+            source_url = input(f"  Enter RSS URL for '{team_name}' (or Enter to finish team): ").strip()
+            if not source_url: break
+            source_name = input(f"  Enter Name for this source: ").strip()
+            
+            add_source_script = f"""
+import os, sys, django
+sys.path.append('.')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
+django.setup()
+from collector.models import Team, Source
+team = Team.objects.get(code='{team_code}')
+Source.objects.get_or_create(
+    url='{source_url}', 
+    defaults={{'source': '{source_name}', 'type': 'rss', 'team': team, 'is_active': True, 'fetch_interval': 3600}}
+)
+"""
+            try:
+                subprocess.check_call(f'"{py}" -c "{add_source_script}"', cwd=NEWS_DIR, shell=True)
+                print(f"  ✅ Source added.")
+            except:
+                print("  ❌ Failed to add source.")
+
+    # Initialize Job Configs if empty
+    init_jobs_script = """
+import os, sys, django
+sys.path.append('.')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
+django.setup()
+from collector.models import JobConfig
+JobConfig.objects.get_or_create(job_type='crawl', defaults={'enabled': True, 'limit': 10})
+JobConfig.objects.get_or_create(job_type='openrouter', defaults={'enabled': True, 'limit': 5})
+"""
+    subprocess.check_call(f'"{py}" -c "{init_jobs_script}"', cwd=NEWS_DIR, shell=True)
+    print("\n✅ System jobs initialized.")
+
 def install():
     print("🚀 Installing ISD Ecosystem...")
     is_windows = sys.platform.startswith('win')
@@ -209,6 +282,9 @@ def install():
             env_content = f"PORT=8787\nSOURCE_DB_PATH={str(NEWS_DIR/'db.sqlite3').replace('\\','/')}\nHUB_DB_PATH={str(HUB_DIR/'data'/'hub.sqlite3').replace('\\','/')}\nLLM_BASE_URL=http://127.0.0.1:11434\n"
             (HUB_DIR / ".env").write_text(env_content)
     print("\n✅ Setup complete! Use 'isd start' to run.")
+    
+    # Run the wizard at the end of install
+    setup_wizard()
 
 def start():
     print("▶️ Starting ISD Services...")
