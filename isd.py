@@ -288,7 +288,7 @@ def start():
     (BASE_DIR / "ecosystem.config.js").write_text(f"""
 module.exports = {{
   apps : [
-    {{ name: 'isd-core', script: 'manage.py', cwd: '{news_esc}', interpreter: '{py}', args: 'runserver 0.0.0.0:8000', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
+    {{ name: 'isd-core', script: 'manage.py', cwd: '{news_esc}', interpreter: '{py}', args: 'runserver 127.0.0.1:8000', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
     {{ name: 'isd-worker', script: '{py}', cwd: '{news_esc}', args: '-m celery -A isdnews worker --loglevel=info{pool}', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
     {{ name: 'isd-beat', script: '{py}', cwd: '{news_esc}', args: '-m celery -A isdnews beat --loglevel=info', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
     {{ name: 'isd-api', script: 'apps/api/server.js', cwd: '{hub_esc}', windowsHide: true }}
