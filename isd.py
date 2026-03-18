@@ -134,13 +134,35 @@ def configure_ai():
 def configure_jobs():
     step_title(6, "Job Configuration")
     crawl_limit = input("Crawl Job - Articles per source [default: 10]: ").strip() or "10"
+    crawl_interval = input("Crawl Job - Frequency in minutes [default: 5]: ").strip() or "5"
+    
     ai_limit = input("AI Job - Articles per run [default: 5]: ").strip() or "5"
-    run_django_script(f"""
+    ai_interval = input("AI Job - Frequency in minutes [default: 30]: ").strip() or "30"
+    
+    script = f"""
 from collector.models import JobConfig
+from django_celery_beat.models import PeriodicTask, IntervalSchedule
+import json
+
+# Update JobConfig
 JobConfig.objects.update_or_create(job_type='crawl', defaults={{'enabled': True, 'limit': {crawl_limit}}})
 JobConfig.objects.update_or_create(job_type='openrouter', defaults={{'enabled': True, 'limit': {ai_limit}}})
-""")
-    print("✅ Jobs initialized.")
+
+# Update Schedules in DB
+c_int, _ = IntervalSchedule.objects.get_or_create(every={crawl_interval}, period=IntervalSchedule.MINUTES)
+PeriodicTask.objects.update_or_create(
+    name='run-crawl-job-db', 
+    defaults={{'task': 'collector.tasks.collect_data_from_all_sources', 'interval': c_int, 'enabled': True}}
+)
+
+a_int, _ = IntervalSchedule.objects.get_or_create(every={ai_interval}, period=IntervalSchedule.MINUTES)
+PeriodicTask.objects.update_or_create(
+    name='run-openrouter-job-db', 
+    defaults={{'task': 'collector.tasks.process_openrouter_job', 'interval': a_int, 'enabled': True}}
+)
+"""
+    run_django_script(script)
+    print(f"✅ Jobs configured: Crawl every {crawl_interval}m (limit {crawl_limit}), AI every {ai_interval}m (limit {ai_limit})")
 
 def configure_telegram_bot():
     step_title(3, "Telegram Bot Configuration")

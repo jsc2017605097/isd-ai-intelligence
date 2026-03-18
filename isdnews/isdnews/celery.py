@@ -7,13 +7,6 @@ app = Celery('isdnews')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
-app.conf.beat_schedule = {
-    'run-crawl-job': {
-        'task': 'collector.tasks.collect_data_from_all_sources',
-        'schedule': crontab(minute='*/5'),
-    },
-    'run-openrouter-job': {
-        'task': 'collector.tasks.process_openrouter_job',
-        'schedule': crontab(minute='*/30'),
-    },
-}
+# Job schedules are now managed via Database Scheduler (Django Admin)
+# Configured during 'isd install' or manually in Admin panel.
+app.conf.beat_schedule = {}
