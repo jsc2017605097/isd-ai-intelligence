@@ -16,7 +16,7 @@ from django.utils import timezone as django_timezone
 from django.db import models
 from asgiref.sync import sync_to_async
 
-from .models import Source, Article, FetchLog, AILog
+from .models import Source, Article, FetchLog, AILog, SystemConfig, Team
 import logging
 
 # BeautifulSoup for content extraction
@@ -289,6 +289,19 @@ Content: {content_for_ai}"""
                 # Notify Telegram
                 bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
                 chat_id = os.getenv('TELEGRAM_CHAT_ID')
+                
+                # Check for per-team chat ID in Database
+                try:
+                    def _get_team_chat_id():
+                        cfg = SystemConfig.objects.filter(key='telegram_chat_id', team__code=ai_type, is_active=True).first()
+                        return cfg.value if cfg else None
+                    team_chat_id = await asyncio.to_thread(_get_team_chat_id)
+                    if team_chat_id:
+                        chat_id = team_chat_id
+                        logger.info(f"[AI:{provider}] Using per-team chat ID: {chat_id} for team {ai_type}")
+                except Exception as _cfg_err:
+                    logger.warning(f"Error looking up team chat ID: {_cfg_err}")
+
                 if bot_token and chat_id:
                     # Get metadata for better title
                     def _get_meta():

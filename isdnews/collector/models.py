@@ -204,7 +204,8 @@ class SystemConfig(models.Model):
     KEY_CHOICES = [
         ('openrouter_api_key', 'OpenRouter API Key'),
         ('teams_webhook', 'Teams Webhook URL'),
-        ('agentql_api_key', 'AgentQL API Key')
+        ('agentql_api_key', 'AgentQL API Key'),
+        ('telegram_chat_id', 'Telegram Chat ID (Per Team)')
     ]
 
     KEY_TYPES = [

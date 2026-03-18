@@ -268,19 +268,85 @@ def show_config():
     print(f"📂 Install Dir : {BASE_DIR}")
     print("-" * 35)
 
+def configure_telegram():
+    print("\n--- 📱 Telegram Per-Team Configuration ---")
+    if not NEWS_DIR.exists():
+        print("❌ isdnews directory not found.")
+        return
+
+    is_win = sys.platform.startswith('win')
+    py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
+    
+    # Get list of teams from DB via python script
+    get_teams_script = """
+import os, sys, django
+sys.path.append('.')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
+django.setup()
+from collector.models import Team
+teams = list(Team.objects.all().values('code', 'name'))
+import json
+print(json.dumps(teams))
+"""
+    try:
+        output = subprocess.check_output(f'"{py}" -c "{get_teams_script}"', cwd=NEWS_DIR, shell=True).decode()
+        teams = json.loads(output.splitlines()[-1])
+    except Exception as e:
+        print(f"❌ Error fetching teams: {e}")
+        return
+
+    if not teams:
+        print("⚠️ No teams found in database. Run 'isd install' and check sources first.")
+        return
+
+    team_options = [f"{t['name']} ({t['code']})" for t in teams]
+    selected_team_str = pick("Select team to configure Telegram", team_options)
+    selected_team_code = selected_team_str.split('(')[1].split(')')[0]
+
+    chat_id = input(f"Enter Telegram Chat ID for team {selected_team_code}: ").strip()
+    
+    if not chat_id:
+        print("❌ Chat ID cannot be empty.")
+        return
+
+    # Update DB via python script
+    update_db_script = f"""
+import os, sys, django
+sys.path.append('.')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
+django.setup()
+from collector.models import Team, SystemConfig
+team = Team.objects.get(code='{selected_team_code}')
+cfg, created = SystemConfig.objects.get_or_create(
+    key='telegram_chat_id', 
+    team=team,
+    defaults={{'key_type': 'webhook', 'value': '{chat_id}', 'is_active': True}}
+)
+if not created:
+    cfg.value = '{chat_id}'
+    cfg.save()
+print("SUCCESS")
+"""
+    try:
+        subprocess.check_call(f'"{py}" -c "{update_db_script}"', cwd=NEWS_DIR, shell=True)
+        print(f"✅ Telegram Chat ID updated for team {selected_team_code}!")
+    except Exception as e:
+        print(f"❌ Error updating database: {e}")
+
 def usage():
     print("""
 ISD Ecosystem CLI
 Sử dụng:
-  isd install      - Cài đặt môi trường từ đầu (venv, npm, db)
-  isd config ai    - Cấu hình AI Provider (Multi-Vendor + OAuth)
-  isd config show  - Kiểm tra Model và Vendor hiện tại
-  isd admin        - Tạo tài khoản Admin (Superuser)
-  isd start        - Chạy tất cả dịch vụ bằng PM2
-  isd stop         - Dừng tất cả dịch vụ
-  isd restart      - Khởi động lại dịch vụ
-  isd status       - Xem tình trạng các dịch vụ
-  isd model <name> - Đổi nhanh model (VD: isd model qwen3:30b)
+  isd install         - Cài đặt môi trường từ đầu (venv, npm, db)
+  isd config ai       - Cấu hình AI Provider (Multi-Vendor + OAuth)
+  isd config telegram - Cấu hình Group Telegram riêng cho từng Team
+  isd config show     - Kiểm tra Model và Vendor hiện tại
+  isd admin           - Tạo tài khoản Admin (Superuser)
+  isd start           - Chạy tất cả dịch vụ bằng PM2
+  isd stop            - Dừng tất cả dịch vụ
+  isd restart         - Khởi động lại dịch vụ
+  isd status          - Xem tình trạng các dịch vụ
+  isd model <name>    - Đổi nhanh model (VD: isd model qwen3:30b)
     """)
 
 if __name__ == "__main__":
@@ -293,6 +359,7 @@ if __name__ == "__main__":
         run_cmd(f'"{py}" manage.py createsuperuser', cwd=NEWS_DIR)
     elif cmd == "config" and len(sys.argv) > 2:
         if sys.argv[2] == "ai": configure_ai()
+        elif sys.argv[2] == "telegram": configure_telegram()
         elif sys.argv[2] == "show": show_config()
         else: usage()
     elif cmd == "start": start()
