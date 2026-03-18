@@ -126,10 +126,9 @@ module.exports = {{
   apps : [
     {{
       name: 'isd-worker',
-      script: 'manage.py',
+      script: '{py_path}',
       cwd: '{news_dir_esc}',
-      interpreter: '{py_path}',
-      args: 'celery worker --loglevel=info',
+      args: '-m celery -A isdnews worker --loglevel=info',
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
@@ -137,10 +136,9 @@ module.exports = {{
     }},
     {{
       name: 'isd-beat',
-      script: 'manage.py',
+      script: '{py_path}',
       cwd: '{news_dir_esc}',
-      interpreter: '{py_path}',
-      args: 'celery beat --loglevel=info',
+      args: '-m celery -A isdnews beat --loglevel=info',
       autorestart: true,
       watch: false,
       windowsHide: true
