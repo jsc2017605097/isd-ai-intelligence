@@ -68,9 +68,17 @@ def install():
         if not (NEWS_DIR / ".env").exists():
             if (NEWS_DIR / ".env.example").exists():
                 # Đọc .env.example và thay thế giá trị
-                example_content = (NEWS_DIR / ".env.example").read_text()
-                env_content = example_content.replace("USE_REDIS=True", f"USE_REDIS={use_redis}")
-                (NEWS_DIR / ".env").write_text(env_content)
+                lines = (NEWS_DIR / ".env.example").read_text().splitlines()
+                new_lines = []
+                for line in lines:
+                    if line.startswith("USE_REDIS="):
+                        new_lines.append(f"USE_REDIS={use_redis}")
+                    elif line.startswith("CELERY_BROKER_URL=") and use_redis == "False":
+                        new_lines.append(f"# {line} (Disabled for No-Redis mode)")
+                    else:
+                        new_lines.append(line)
+                
+                (NEWS_DIR / ".env").write_text("\n".join(new_lines))
                 print(f"✅ Đã tạo file .env (USE_REDIS={use_redis})")
             else:
                 (NEWS_DIR / ".env").write_text(f"DEBUG=False\nUSE_REDIS={use_redis}\nAI_PROVIDER=ollama\nOLLAMA_BASE_URL=http://127.0.0.1:11434\n")
@@ -118,8 +126,11 @@ def start():
     
     if is_windows:
         py_path = f"{news_dir_esc}\\\\venv\\\\Scripts\\\\python.exe"
+        # Trên Windows bắt buộc dùng --pool=solo để tránh lỗi WinError 5 Access Denied
+        pool_flag = " --pool=solo"
     else:
         py_path = f"{news_dir_esc}/venv/bin/python"
+        pool_flag = ""
 
     ecosystem_content = f"""
 module.exports = {{
@@ -128,7 +139,7 @@ module.exports = {{
       name: 'isd-worker',
       script: '{py_path}',
       cwd: '{news_dir_esc}',
-      args: '-m celery -A isdnews worker --loglevel=info',
+      args: '-m celery -A isdnews worker --loglevel=info{pool_flag}',
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
