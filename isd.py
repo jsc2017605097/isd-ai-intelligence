@@ -19,11 +19,11 @@ def run_cmd(cmd, cwd=None, shell=True):
         sys.exit(1)
 
 def install():
-    print("🚀 Installing ISD Ecosystem...")
+    print(" Installing ISD Ecosystem...")
     is_windows = sys.platform.startswith('win')
     
     # Ask for Redis
-    use_redis_input = input("❓ Do you want to use Redis? (Y/n): ").strip().lower()
+    use_redis_input = input(" Do you want to use Redis? (Y/n): ").strip().lower()
     use_redis = "True" if use_redis_input != 'n' else "False"
 
     # Find python
@@ -39,12 +39,12 @@ def install():
 
     # Setup News
     if NEWS_DIR.exists():
-        print(f"📦 Configuring Pipeline (isdnews) using {py_cmd}...")
+        print(f" Configuring Pipeline (isdnews) using {py_cmd}...")
         
         logs_dir = NEWS_DIR / "logs"
         if not logs_dir.exists():
             logs_dir.mkdir(parents=True, exist_ok=True)
-            print("📁 Created logs directory.")
+            print(" Created logs directory.")
 
         venv_dir = NEWS_DIR / "venv"
         run_cmd(f"{py_cmd} -m venv venv", cwd=NEWS_DIR)
@@ -56,10 +56,10 @@ def install():
             pip_path = venv_dir / "bin" / "pip"
             python_path = venv_dir / "bin" / "python"
         
-        print("📥 Installing Python dependencies...")
+        print(" Installing Python dependencies...")
         run_cmd(f'"{pip_path}" install -r requirements.txt', cwd=NEWS_DIR)
         
-        print("🎭 Installing Playwright Browser...")
+        print(" Installing Playwright Browser...")
         run_cmd(f'"{python_path}" -m playwright install chromium', cwd=NEWS_DIR)
         
         if not (NEWS_DIR / ".env").exists():
@@ -74,20 +74,20 @@ def install():
                     else:
                         new_lines.append(line)
                 (NEWS_DIR / ".env").write_text("\n".join(new_lines))
-                print(f"✅ Created .env file (USE_REDIS={use_redis})")
+                print(f" Created .env file (USE_REDIS={use_redis})")
             else:
                 (NEWS_DIR / ".env").write_text(f"DEBUG=False\nUSE_REDIS={use_redis}\nAI_PROVIDER=ollama\nOLLAMA_BASE_URL=http://127.0.0.1:11434\n")
         
-        print("🗄️ Migrating Database...")
+        print(" Migrating Database...")
         run_cmd(f'"{python_path}" manage.py migrate', cwd=NEWS_DIR)
     
     # Setup Hub
     if HUB_DIR.exists():
-        print("📦 Configuring Dashboard (isdnews-hub)...")
+        print(" Configuring Dashboard (isdnews-hub)...")
         hub_data_dir = HUB_DIR / "data"
         if not hub_data_dir.exists():
             hub_data_dir.mkdir(parents=True, exist_ok=True)
-            print("📁 Created data directory for Hub.")
+            print(" Created data directory for Hub.")
 
         run_cmd("npm install", cwd=HUB_DIR)
         if not (HUB_DIR / ".env").exists():
@@ -96,17 +96,17 @@ def install():
             env_content = f"PORT=8787\nSOURCE_DB_PATH={db_path}\nHUB_DB_PATH={hub_db}\nLLM_BASE_URL=http://127.0.0.1:11434\n"
             (HUB_DIR / ".env").write_text(env_content)
 
-    print("\n✅ Setup complete! Use 'isd start' to run the system.")
+    print("\n Setup complete! Use 'isd start' to run the system.")
 
 def start():
-    print("▶️ Starting ISD Services...")
+    print(" Starting ISD Services...")
     is_windows = sys.platform.startswith('win')
     
     try:
         subprocess.run("pm2 --version", shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except:
-        print("❌ Error: 'pm2' command not found.")
-        print("👉 Please install PM2: npm install -g pm2")
+        print(" Error: 'pm2' command not found.")
+        print(" Please install PM2: npm install -g pm2")
         return
 
     ecosystem_path = BASE_DIR / "ecosystem.config.js"
@@ -130,7 +130,10 @@ module.exports = {{
       args: 'manage.py runserver 0.0.0.0:8000',
       autorestart: true,
       watch: false,
-      windowsHide: true
+      windowsHide: true,
+      env: {{
+        PYTHONPATH: '{news_dir_esc}'
+      }}
     }},
     {{
       name: 'isd-worker',
@@ -140,7 +143,10 @@ module.exports = {{
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
-      windowsHide: true
+      windowsHide: true,
+      env: {{
+        PYTHONPATH: '{news_dir_esc}'
+      }}
     }},
     {{
       name: 'isd-beat',
@@ -149,7 +155,10 @@ module.exports = {{
       args: '-m celery -A isdnews beat --loglevel=info',
       autorestart: true,
       watch: false,
-      windowsHide: true
+      windowsHide: true,
+      env: {{
+        PYTHONPATH: '{news_dir_esc}'
+      }}
     }},
     {{
       name: 'isd-api',
@@ -165,14 +174,14 @@ module.exports = {{
     ecosystem_path.write_text(ecosystem_content, encoding='utf-8')
     run_cmd(f"pm2 start ecosystem.config.js", cwd=BASE_DIR)
     run_cmd("pm2 save")
-    print("\n✅ Services started! Use 'pm2 status' to check.")
+    print("\n Services started! Use 'pm2 status' to check.")
 
 def stop():
-    print("⏹️ Stopping ISD Services...")
+    print(" Stopping ISD Services...")
     run_cmd("pm2 stop isd-worker isd-beat isd-api isd-core || true")
 
 def restart():
-    print("🔄 Restarting ISD Services...")
+    print(" Restarting ISD Services...")
     stop()
     start()
 
@@ -180,7 +189,7 @@ def status():
     run_cmd("pm2 list | grep isd || echo 'No active services.'")
 
 def set_model(model_name):
-    print(f"🤖 Switching model to: {model_name}")
+    print(f" Switching model to: {model_name}")
     env_path = NEWS_DIR / ".env"
     if env_path.exists():
         lines = env_path.read_text().splitlines()
@@ -191,7 +200,7 @@ def set_model(model_name):
     restart()
 
 def create_superuser():
-    print("👤 Creating Admin Account (Superuser)...")
+    print(" Creating Admin Account (Superuser)...")
     if NEWS_DIR.exists():
         is_windows = sys.platform.startswith('win')
         python_path = NEWS_DIR / "venv" / ("Scripts" if is_windows else "bin") / ("python.exe" if is_windows else "python")
