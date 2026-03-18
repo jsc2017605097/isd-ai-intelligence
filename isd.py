@@ -195,11 +195,20 @@ def show_config():
 def install():
     print("🚀 ISD Ecosystem Smart Installer")
     is_win = sys.platform.startswith('win')
+    
+    # Kích hoạt ANSI escape codes cho Windows (để hiện màu và menu)
+    if is_win:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+
     mode = "fresh"
     if DB_PATH.exists():
         print(f"\n⚠️ Existing database found.")
         mode = "resume" if pick("Installation Mode", ["Resume (Keep data)", "Fresh Install (Wipe all)"]) == "Resume (Keep data)" else "fresh"
-        if mode == "fresh": DB_PATH.unlink()
+        if mode == "fresh": 
+            try: DB_PATH.unlink()
+            except: print("⚠️ Could not delete DB, it might be in use.")
 
     step_title(1, "Environment Setup")
     python_cmds = ["python", "py", "python3"]
@@ -214,10 +223,16 @@ def install():
     
     if NEWS_DIR.exists():
         (NEWS_DIR/"logs").mkdir(parents=True, exist_ok=True)
-        if mode == "fresh": run_cmd(f"{py_cmd} -m venv venv", cwd=NEWS_DIR)
+        venv_dir = NEWS_DIR / "venv"
+        if mode == "fresh":
+            print("📦 Creating virtual environment...")
+            run_cmd(f"{py_cmd} -m venv venv", cwd=NEWS_DIR)
+        
         exec_p = "Scripts" if is_win else "bin"
-        pip = NEWS_DIR / exec_p / "pip"
-        python = NEWS_DIR / exec_p / "python"
+        pip = venv_dir / exec_p / "pip"
+        python = venv_dir / exec_p / "python"
+        
+        print("📥 Installing Python dependencies...")
         run_cmd(f'"{pip}" install -r requirements.txt', cwd=NEWS_DIR)
         run_cmd(f'"{python}" -m playwright install chromium', cwd=NEWS_DIR)
         
@@ -249,11 +264,12 @@ def install():
         configure_ai()
         step_title(5, "Initial Teams & Sources")
         while True:
-            name = input("\nTeam Name (e.g. Developer) [Enter to finish]: ").strip()
-            if not name: break
-            code = input(f"Team Code for '{name}': ").strip().lower()
-            chat = input(f"Telegram Chat ID for '{code}' [optional]: ").strip()
-            run_django_script(f"from collector.models import Team, SystemConfig; team, _ = Team.objects.get_or_create(code='{code}', defaults={{'name': '{name}', 'is_active': True}}); \nif '{chat}': SystemConfig.objects.update_or_create(key='telegram_chat_id', team=team, defaults={{'value': '{chat}', 'key_type': 'webhook', 'is_active': True}})")
+            t_name = input("\nTeam Name (e.g. Developer) [Enter to finish]: ").strip()
+            if not t_name: break
+            t_code = input(f"Team Code for '{t_name}': ").strip().lower()
+            t_chat = input(f"Telegram Chat ID for '{t_code}' [optional]: ").strip()
+            script = f"from collector.models import Team, SystemConfig; team, _ = Team.objects.get_or_create(code='{t_code}', defaults={{'name': '{t_name}', 'is_active': True}}); \nif '{t_chat}': SystemConfig.objects.update_or_create(key='telegram_chat_id', team=team, defaults={{'value': '{t_chat}', 'key_type': 'webhook', 'is_active': True}})"
+            run_django_script(script)
             while True:
                 url = input(f"  RSS URL for '{name}' [Enter to finish]: ").strip()
                 if not url: break
