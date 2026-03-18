@@ -218,7 +218,7 @@ def install():
     print("🚀 ISD Ecosystem Smart Installer")
     is_win = sys.platform.startswith('win')
     
-    # Kích hoạt ANSI escape codes cho Windows (để hiện màu và menu)
+    # Kích hoạt ANSI cho Windows
     if is_win:
         import ctypes
         kernel32 = ctypes.windll.kernel32
@@ -228,11 +228,32 @@ def install():
     if DB_PATH.exists():
         print(f"\n⚠️ Existing database found.")
         mode = "resume" if pick("Installation Mode", ["Resume (Keep data)", "Fresh Install (Wipe all)"]) == "Resume (Keep data)" else "fresh"
-        if mode == "fresh": 
-            try: DB_PATH.unlink()
-            except: print("⚠️ Could not delete DB, it might be in use.")
+        
+        if mode == "fresh":
+            print("🛑 Stopping all services to release file locks...")
+            try: subprocess.run("pm2 stop all", shell=True, capture_output=True)
+            except: pass
+            
+            print("🗑️ Wiping existing data...")
+            import shutil
+            import time
+            
+            # Thử xóa venv và db nhiều lần nếu bị lock
+            for _ in range(3):
+                try:
+                    if DB_PATH.exists(): DB_PATH.unlink()
+                    venv_dir = NEWS_DIR / "venv"
+                    if venv_dir.exists(): shutil.rmtree(venv_dir)
+                    break
+                except Exception as e:
+                    print(f"⏳ Waiting for processes to release files... ({e})")
+                    time.sleep(2)
+            
+            if DB_PATH.exists():
+                print("❌ Fatal: Could not delete database. Please close all CMD windows and try again.")
+                return
 
-    step_title(1, "Environment Setup")
+    # Step 1: Environment Setup
     python_cmds = ["python", "py", "python3"]
     py_cmd = "python"
     for cmd in python_cmds:
