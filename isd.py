@@ -5,12 +5,13 @@ import subprocess
 import json
 from pathlib import Path
 
-# ISD Ecosystem CLI - v1.4.1
-# Distribution Version (Robust Cross-Platform UI)
+# ISD Ecosystem CLI - v1.5.0
+# Smart Installer Edition
 
 BASE_DIR = Path(__file__).parent.absolute()
 NEWS_DIR = BASE_DIR / "isdnews"
 HUB_DIR = BASE_DIR / "isdnews-hub"
+DB_PATH = NEWS_DIR / "db.sqlite3"
 
 def run_cmd(cmd, cwd=None, shell=True):
     try:
@@ -19,145 +20,7 @@ def run_cmd(cmd, cwd=None, shell=True):
         print(f"Error executing: {cmd}")
         sys.exit(1)
 
-def pick(title, options):
-    """Zero-dependency cross-platform arrow-key selector"""
-    print(f"\n=== {title} ===")
-    print("(Use arrow keys/WASD to move, Enter to select)")
-    
-    current_idx = 0
-    
-    # Check if we are on Windows
-    is_windows = sys.platform.startswith('win')
-    
-    if is_windows:
-        import msvcrt
-        def get_key():
-            ch = msvcrt.getch()
-            if ch in [b'\x00', b'\xe0']: # Function key prefix
-                ch = msvcrt.getch()
-                if ch == b'H': return 'up'
-                if ch == b'P': return 'down'
-            if ch in [b'w', b'W']: return 'up'
-            if ch in [b's', b'S']: return 'down'
-            if ch == b'\r': return 'enter'
-            return None
-    else:
-        import tty, termios
-        def get_key():
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
-            try:
-                tty.setraw(sys.stdin.fileno())
-                ch = sys.stdin.read(1)
-                if ch == '\x1b':
-                    ch2 = sys.stdin.read(2)
-                    if ch2 == '[A': return 'up'
-                    if ch2 == '[B': return 'down'
-                if ch == '\r' or ch == '\n': return 'enter'
-                if ch == 'w': return 'up'
-                if ch == 's': return 'down'
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-            return None
-
-    def show_menu(idx):
-        # Clear lines
-        for _ in range(len(options)):
-            sys.stdout.write("\033[K") # Clear line
-        sys.stdout.write(f"\033[{len(options)}A") # Move up
-        
-        for i, option in enumerate(options):
-            if i == idx:
-                print(f"\033[96m> {option}\033[0m") # Cyan for selection
-            else:
-                print(f"  {option}")
-
-    # Initial print placeholders
-    for _ in range(len(options)): print("")
-    
-    while True:
-        show_menu(current_idx)
-        key = get_key()
-        if key == 'up' and current_idx > 0:
-            current_idx -= 1
-        elif key == 'down' and current_idx < len(options) - 1:
-            current_idx += 1
-        elif key == 'enter':
-            return options[current_idx]
-
-def configure_ai():
-    print("\n--- AI Configuration ---")
-    
-    providers = ["ollama", "openai", "google", "anthropic", "openrouter"]
-    provider = pick("Select AI Provider", providers)
-    
-    auth_methods = ["API Key"]
-    if provider in ["google", "openai", "anthropic"]:
-        auth_methods.append("OAuth 2.0")
-    
-    auth_method = pick(f"Select Authentication for {provider.upper()}", auth_methods)
-    
-    config_data = {
-        "AI_PROVIDER": provider,
-        "AI_AUTH_METHOD": "oauth" if auth_method == "OAuth 2.0" else "apikey",
-        "AI_API_KEY": "",
-        "AI_CLIENT_ID": "",
-        "AI_CLIENT_SECRET": "",
-        "AI_REFRESH_TOKEN": "",
-        "AI_BASE_URL": "",
-        "AI_MODEL": "qwen3:30b-a3b" if provider == "ollama" else ""
-    }
-
-    if config_data["AI_AUTH_METHOD"] == "apikey":
-        if provider != "ollama":
-            config_data["AI_API_KEY"] = input(f"Enter {provider.upper()} API Key: ").strip()
-            config_data["AI_MODEL"] = input(f"Enter Model Name (e.g. gpt-4o, gemini-1.5-flash...): ").strip()
-        if provider == "openai":
-            config_data["AI_BASE_URL"] = input("Enter Base URL (optional, press Enter for default): ").strip()
-    else:
-        print(f"\n🔑 Configuring OAuth for {provider.upper()}...")
-        config_data["AI_CLIENT_ID"] = input("Enter Client ID: ").strip()
-        config_data["AI_CLIENT_SECRET"] = input("Enter Client Secret: ").strip()
-        config_data["AI_REFRESH_TOKEN"] = input("Enter Refresh Token: ").strip()
-        config_data["AI_MODEL"] = input(f"Enter Model Name: ").strip()
-
-    # Update BOTH .env files
-    for env_path in [NEWS_DIR / ".env", HUB_DIR / ".env"]:
-        if not env_path.parent.exists(): continue
-        lines = env_path.read_text().splitlines() if env_path.exists() else []
-        new_lines = []
-        
-        updates = config_data.copy()
-        if env_path.parent == HUB_DIR:
-            updates["LLM_API_STYLE"] = "openai" if provider != "ollama" else "ollama"
-            updates["LLM_BASE_URL"] = config_data["AI_BASE_URL"]
-            updates["CHAT_MODEL"] = config_data["AI_MODEL"]
-            updates["DIGEST_MODEL"] = config_data["AI_MODEL"]
-
-        seen_keys = set()
-        for line in lines:
-            if "=" not in line: 
-                new_lines.append(line)
-                continue
-            k = line.split("=")[0]
-            if k in updates:
-                new_lines.append(f"{k}={updates[k]}")
-                seen_keys.add(k)
-            else:
-                new_lines.append(line)
-                
-        for k, v in updates.items():
-            if k not in seen_keys:
-                new_lines.append(f"{k}={v}")
-                
-        env_path.write_text("\n".join(new_lines))
-    
-    print(f"✅ AI Configuration updated successfully for {provider.upper()}.")
-    print("🔄 Restarting services to apply changes...")
-    restart()
-
 def run_django_script(script_content):
-    """Executes a Django script robustly by writing to a temp file first"""
     temp_script = NEWS_DIR / "_temp_script.py"
     full_content = f"""
 import os, sys, django
@@ -174,279 +37,267 @@ django.setup()
     finally:
         if temp_script.exists(): temp_script.unlink()
 
-def configure_telegram_bot():
-    print("\n--- 🤖 Telegram Bot Configuration ---")
-    token = input("Enter your Telegram Bot Token: ").strip()
-    chat_id = input("Enter your Default Telegram Chat ID: ").strip()
-    
-    if not token:
-        print("⚠️ Bot Token is empty, skipping...")
-        return
+def pick(title, options):
+    print(f"\n=== {title} ===")
+    print("(Use arrow keys/WASD to move, Enter to select)")
+    current_idx = 0
+    is_windows = sys.platform.startswith('win')
+    if is_windows:
+        import msvcrt
+        def get_key():
+            ch = msvcrt.getch()
+            if ch in [b'\x00', b'\xe0']:
+                ch = msvcrt.getch()
+                if ch == b'H': return 'up'
+                if ch == b'P': return 'down'
+            if ch in [b'w', b'W']: return 'up'
+            if ch in [b's', b'S']: return 'down'
+            if ch == b'\r': return 'enter'
+            return None
+    else:
+        import tty, termios
+        def get_key():
+            fd = sys.stdin.fileno()
+            old = termios.tcgetattr(fd)
+            try:
+                tty.setraw(sys.stdin.fileno())
+                ch = sys.stdin.read(1)
+                if ch == '\x1b':
+                    ch2 = sys.stdin.read(2)
+                    if ch2 == '[A': return 'up'
+                    if ch2 == '[B': return 'down'
+                if ch in ['\r', '\n']: return 'enter'
+                if ch == 'w': return 'up'
+                if ch == 's': return 'down'
+            finally: termios.tcsetattr(fd, termios.TCSADRAIN, old)
+            return None
+    def show_menu(idx):
+        for _ in range(len(options)): sys.stdout.write("\033[K")
+        sys.stdout.write(f"\033[{len(options)}A")
+        for i, opt in enumerate(options):
+            if i == idx: print(f"\033[96m> {opt}\033[0m")
+            else: print(f"  {opt}")
+    for _ in range(len(options)): print("")
+    while True:
+        show_menu(current_idx)
+        k = get_key()
+        if k == 'up' and current_idx > 0: current_idx -= 1
+        elif k == 'down' and current_idx < len(options) - 1: current_idx += 1
+        elif k == 'enter': return options[current_idx]
 
+def step_title(num, title):
+    print(f"\n--- [Step {num}] {title} ---")
+
+def configure_ai():
+    step_title(4, "AI LLM Configuration")
+    providers = ["ollama", "openai", "google", "anthropic", "openrouter"]
+    provider = pick("Select AI Provider", providers)
+    auth_methods = ["API Key"]
+    if provider in ["google", "openai", "anthropic"]: auth_methods.append("OAuth 2.0")
+    auth_method = pick(f"Authentication Method", auth_methods)
+    
+    config = {
+        "AI_PROVIDER": provider,
+        "AI_AUTH_METHOD": "oauth" if auth_method == "OAuth 2.0" else "apikey",
+        "AI_MODEL": "qwen3:30b-a3b" if provider == "ollama" else "gpt-4o"
+    }
+    
+    if config["AI_AUTH_METHOD"] == "apikey":
+        if provider != "ollama":
+            config["AI_API_KEY"] = input(f"Enter {provider.upper()} API Key: ").strip()
+            config["AI_MODEL"] = input(f"Enter Model Name [default: {config['AI_MODEL']}]: ").strip() or config["AI_MODEL"]
+    else:
+        config["AI_CLIENT_ID"] = input("Enter Client ID: ").strip()
+        config["AI_CLIENT_SECRET"] = input("Enter Client Secret: ").strip()
+        config["AI_REFRESH_TOKEN"] = input("Enter Refresh Token: ").strip()
+        config["AI_MODEL"] = input(f"Enter Model Name: ").strip()
+
+    # Save to .env
     for env_path in [NEWS_DIR / ".env", HUB_DIR / ".env"]:
         if not env_path.exists(): continue
         lines = env_path.read_text().splitlines()
         new_lines = []
-        updates = {"TELEGRAM_BOT_TOKEN": token, "TELEGRAM_CHAT_ID": chat_id}
-        
+        updates = config.copy()
+        if env_path.parent == HUB_DIR:
+            updates.update({"CHAT_MODEL": config["AI_MODEL"], "DIGEST_MODEL": config["AI_MODEL"]})
         seen = set()
         for line in lines:
-            if "=" not in line: 
-                new_lines.append(line); continue
+            if "=" not in line: new_lines.append(line); continue
             k = line.split("=")[0]
-            if k in updates:
-                new_lines.append(f"{k}={updates[k]}")
-                seen.add(k)
+            if k in updates: new_lines.append(f"{k}={updates[k]}"); seen.add(k)
             else: new_lines.append(line)
         for k, v in updates.items():
             if k not in seen: new_lines.append(f"{k}={v}")
         env_path.write_text("\n".join(new_lines))
-    print("✅ Telegram Bot configured.")
+    print("✅ AI Configured.")
 
-def setup_wizard():
-    print("\n--- 🧙 ISD First-Run Wizard ---")
-    print("Initializing teams and data sources...")
-    
-    while True:
-        team_name = input("\nEnter Team Name (e.g. Developer) or press Enter to finish: ").strip()
-        if not team_name: break
-        
-        team_code = input(f"Enter Team Code for '{team_name}' (e.g. dev): ").strip().lower()
-        chat_id = input(f"Enter Telegram Chat ID for team '{team_code}' (optional): ").strip()
-        
-        script = f"""
-from collector.models import Team, SystemConfig
-team, _ = Team.objects.get_or_create(code='{team_code}', defaults={{'name': '{team_name}', 'is_active': True}})
-if '{chat_id}':
-    SystemConfig.objects.update_or_create(
-        key='telegram_chat_id', team=team,
-        defaults={{'value': '{chat_id}', 'key_type': 'webhook', 'is_active': True}}
-    )
-"""
-        run_django_script(script)
-        print(f"✅ Team '{team_name}' ready.")
-
-        while True:
-            source_url = input(f"  Enter RSS URL for '{team_name}' (or Enter to finish team): ").strip()
-            if not source_url: break
-            source_name = input(f"  Enter Name for this source: ").strip()
-            
-            s_script = f"""
-from collector.models import Team, Source
-team = Team.objects.get(code='{team_code}')
-Source.objects.get_or_create(
-    url='{source_url}', 
-    defaults={{'source': '{source_name}', 'type': 'rss', 'team': team, 'is_active': True, 'fetch_interval': 3600}}
-)
-"""
-            run_django_script(s_script)
-            print(f"  ✅ Source '{source_name}' added.")
-
-    # Init Jobs
-    run_django_script("""
+def configure_jobs():
+    step_title(6, "Job Configuration")
+    crawl_limit = input("Crawl Job - Articles per source [default: 10]: ").strip() or "10"
+    ai_limit = input("AI Job - Articles per run [default: 5]: ").strip() or "5"
+    run_django_script(f"""
 from collector.models import JobConfig
-JobConfig.objects.get_or_create(job_type='crawl', defaults={'enabled': True, 'limit': 10})
-JobConfig.objects.get_or_create(job_type='openrouter', defaults={'enabled': True, 'limit': 5})
+JobConfig.objects.update_or_create(job_type='crawl', defaults={{'enabled': True, 'limit': {crawl_limit}}})
+JobConfig.objects.update_or_create(job_type='openrouter', defaults={{'enabled': True, 'limit': {ai_limit}}})
 """)
-    print("\n✅ System jobs initialized.")
+    print("✅ Jobs initialized.")
+
+def configure_telegram_bot():
+    step_title(3, "Telegram Bot Configuration")
+    token = input("Enter Telegram Bot Token: ").strip()
+    chat_id = input("Enter Default Chat ID: ").strip()
+    if token:
+        for env_path in [NEWS_DIR / ".env", HUB_DIR / ".env"]:
+            if not env_path.exists(): continue
+            lines = env_path.read_text().splitlines()
+            new_lines = []
+            updates = {"TELEGRAM_BOT_TOKEN": token, "TELEGRAM_CHAT_ID": chat_id}
+            seen = set()
+            for line in lines:
+                if "=" not in line: new_lines.append(line); continue
+                k = line.split("=")[0]
+                if k in updates: new_lines.append(f"{k}={updates[k]}"); seen.add(k)
+                else: new_lines.append(line)
+            for k, v in updates.items():
+                if k not in seen: new_lines.append(f"{k}={v}")
+            env_path.write_text("\n".join(new_lines))
+    print("✅ Telegram configured.")
+
+def configure_telegram_per_team():
+    print("\n--- 📱 Telegram Per-Team Configuration ---")
+    is_win = sys.platform.startswith('win')
+    py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
+    get_teams = "import os, sys, django, json; sys.path.append('.'); os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings'); django.setup(); from collector.models import Team; print(json.dumps(list(Team.objects.all().values('code', 'name'))))"
+    try:
+        out = subprocess.check_output(f'"{py}" -c "{get_teams}"', cwd=NEWS_DIR, shell=True).decode()
+        teams = json.loads(out.splitlines()[-1])
+        if not teams: print("⚠️ No teams found."); return
+        opt = [f"{t['name']} ({t['code']})" for t in teams]
+        sel = pick("Select team", opt)
+        code = sel.split('(')[1].split(')')[0]
+        cid = input(f"Enter Chat ID for {code}: ").strip()
+        if cid:
+            run_django_script(f"from collector.models import Team, SystemConfig; team=Team.objects.get(code='{code}'); SystemConfig.objects.update_or_create(key='telegram_chat_id', team=team, defaults={{'value': '{cid}', 'key_type': 'webhook', 'is_active': True}})")
+            print("✅ Updated.")
+    except: print("❌ Error.")
+
+def show_config():
+    print("\n--- 🔍 Current Configuration ---")
+    env = NEWS_DIR / ".env"
+    if env.exists():
+        c = dict(l.split("=",1) for l in env.read_text().splitlines() if "=" in l)
+        print(f"🤖 AI Provider : {c.get('AI_PROVIDER','N/A').upper()}")
+        print(f"📦 AI Model    : {c.get('AI_MODEL','N/A')}")
+        print(f"🔑 Auth Method : {c.get('AI_AUTH_METHOD','apikey')}")
+        print(f"💾 Using Redis : {c.get('USE_REDIS','True')}")
+    else: print("No config found.")
 
 def install():
-    print("🚀 Installing ISD Ecosystem...")
-    is_windows = sys.platform.startswith('win')
-    
-    use_redis_input = input("❓ Do you want to use Redis? (Y/n): ").strip().lower()
-    use_redis = "True" if use_redis_input != 'n' else "False"
+    print("🚀 ISD Ecosystem Smart Installer")
+    is_win = sys.platform.startswith('win')
+    mode = "fresh"
+    if DB_PATH.exists():
+        print(f"\n⚠️ Existing database found.")
+        mode = "resume" if pick("Installation Mode", ["Resume (Keep data)", "Fresh Install (Wipe all)"]) == "Resume (Keep data)" else "fresh"
+        if mode == "fresh": DB_PATH.unlink()
 
+    step_title(1, "Environment Setup")
     python_cmds = ["python", "py", "python3"]
     py_cmd = "python"
     for cmd in python_cmds:
         try:
             subprocess.run(f"{cmd} --version", shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            py_cmd = cmd
-            break
+            py_cmd = cmd; break
         except: continue
 
+    use_redis = "True" if input("❓ Use Redis? (y/N) [default: n]: ").strip().lower() == 'y' else "False"
+    
     if NEWS_DIR.exists():
-        print(f"📦 Configuring Pipeline (isdnews) using {py_cmd}...")
-        logs_dir = NEWS_DIR / "logs"
-        if not logs_dir.exists(): logs_dir.mkdir(parents=True, exist_ok=True)
-        venv_dir = NEWS_DIR / "venv"
-        run_cmd(f"{py_cmd} -m venv venv", cwd=NEWS_DIR)
+        (NEWS_DIR/"logs").mkdir(parents=True, exist_ok=True)
+        if mode == "fresh": run_cmd(f"{py_cmd} -m venv venv", cwd=NEWS_DIR)
+        exec_p = "Scripts" if is_win else "bin"
+        pip = NEWS_DIR / exec_p / "pip"
+        python = NEWS_DIR / exec_p / "python"
+        run_cmd(f'"{pip}" install -r requirements.txt', cwd=NEWS_DIR)
+        run_cmd(f'"{python}" -m playwright install chromium', cwd=NEWS_DIR)
         
-        exec_p = "Scripts" if is_windows else "bin"
-        pip_path = venv_dir / exec_p / "pip"
-        python_path = venv_dir / exec_p / "python"
+        if not (NEWS_DIR / ".env").exists() or mode == "fresh":
+            example = NEWS_DIR / ".env.example"
+            lines = example.read_text().splitlines() if example.exists() else []
+            new_lines = []
+            for l in lines:
+                if l.startswith("USE_REDIS="): new_lines.append(f"USE_REDIS={use_redis}")
+                elif l.startswith("CELERY_BROKER_URL=") and use_redis == "False": new_lines.append(f"# {l}")
+                elif l.startswith("DEBUG="): new_lines.append("DEBUG=True")
+                else: new_lines.append(l)
+            (NEWS_DIR / ".env").write_text("\n".join(new_lines))
         
-        print("📥 Installing Python dependencies...")
-        run_cmd(f'"{pip_path}" install -r requirements.txt', cwd=NEWS_DIR)
-        run_cmd(f'"{python_path}" -m playwright install chromium', cwd=NEWS_DIR)
-        
-        if not (NEWS_DIR / ".env").exists():
-            if (NEWS_DIR / ".env.example").exists():
-                lines = (NEWS_DIR / ".env.example").read_text().splitlines()
-                new_lines = [f"USE_REDIS={use_redis}" if l.startswith("USE_REDIS=") else l for l in lines]
-                (NEWS_DIR / ".env").write_text("\n".join(new_lines))
-            else:
-                (NEWS_DIR / ".env").write_text(f"DEBUG=True\nUSE_REDIS={use_redis}\nAI_PROVIDER=ollama\n")
-        
-        # Configure Bot and AI during install
+        run_cmd(f'"{python}" manage.py migrate', cwd=NEWS_DIR)
+        run_cmd(f'"{python}" manage.py collectstatic --noinput', cwd=NEWS_DIR)
+
+    if HUB_DIR.exists():
+        (HUB_DIR / "data").mkdir(parents=True, exist_ok=True)
+        run_cmd("npm install", cwd=HUB_DIR)
+        if not (HUB_DIR / ".env").exists() or mode == "fresh":
+            db_rel = str(NEWS_DIR/'db.sqlite3').replace('\\','/')
+            (HUB_DIR / ".env").write_text(f"PORT=8787\nSOURCE_DB_PATH={db_rel}\nHUB_DB_PATH=./data/hub.sqlite3\n")
+
+    if mode == "fresh":
+        step_title(2, "Admin Account")
+        run_cmd(f'"{python}" manage.py createsuperuser', cwd=NEWS_DIR)
         configure_telegram_bot()
         configure_ai()
-        print("🗄️ Migrating Database...")
-        run_cmd(f'"{python_path}" manage.py migrate', cwd=NEWS_DIR)
-        print("📁 Collecting static files...")
-        run_cmd(f'"{python_path}" manage.py collectstatic --noinput', cwd=NEWS_DIR)
-    
-    if HUB_DIR.exists():
-        print("📦 Configuring Dashboard (isdnews-hub)...")
-        if not (HUB_DIR / "data").exists(): (HUB_DIR / "data").mkdir(parents=True, exist_ok=True)
-        run_cmd("npm install", cwd=HUB_DIR)
-        if not (HUB_DIR / ".env").exists():
-            env_content = f"PORT=8787\nSOURCE_DB_PATH={str(NEWS_DIR/'db.sqlite3').replace('\\','/')}\nHUB_DB_PATH={str(HUB_DIR/'data'/'hub.sqlite3').replace('\\','/')}\nLLM_BASE_URL=http://127.0.0.1:11434\n"
-            (HUB_DIR / ".env").write_text(env_content)
+        step_title(5, "Initial Teams & Sources")
+        while True:
+            name = input("\nTeam Name (e.g. Developer) [Enter to finish]: ").strip()
+            if not name: break
+            code = input(f"Team Code for '{name}': ").strip().lower()
+            chat = input(f"Telegram Chat ID for '{code}' [optional]: ").strip()
+            run_django_script(f"from collector.models import Team, SystemConfig; team, _ = Team.objects.get_or_create(code='{code}', defaults={{'name': '{name}', 'is_active': True}}); \nif '{chat}': SystemConfig.objects.update_or_create(key='telegram_chat_id', team=team, defaults={{'value': '{chat}', 'key_type': 'webhook', 'is_active': True}})")
+            while True:
+                url = input(f"  RSS URL for '{name}' [Enter to finish]: ").strip()
+                if not url: break
+                sname = input(f"  Source Name: ").strip()
+                run_django_script(f"from collector.models import Team, Source; team=Team.objects.get(code='{code}'); Source.objects.get_or_create(url='{url}', defaults={{'source': '{sname}', 'type': 'rss', 'team': team, 'is_active': True}})")
+        configure_jobs()
+
     print("\n✅ Setup complete! Use 'isd start' to run.")
-    
-    # Run the wizard at the end of install
-    setup_wizard()
 
 def start():
-    print("▶️ Starting ISD Services...")
-    is_windows = sys.platform.startswith('win')
-    try:
-        subprocess.run("pm2 --version", shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except:
-        print("❌ Error: 'pm2' not found. Install it: npm install -g pm2"); return
-
-    ecosystem_path = BASE_DIR / "ecosystem.config.js"
-    news_dir_esc = str(NEWS_DIR).replace("\\", "\\\\")
-    hub_dir_esc = str(HUB_DIR).replace("\\", "\\\\")
-    py_path = str(NEWS_DIR / "venv" / ("Scripts" if is_windows else "bin") / "python").replace("\\", "\\\\")
-    pool_flag = " --pool=solo" if is_windows else ""
-
-    ecosystem_content = f"""
+    is_win = sys.platform.startswith('win')
+    py = str(NEWS_DIR / ("Scripts" if is_win else "bin") / "python").replace("\\", "\\\\")
+    news_esc = str(NEWS_DIR).replace("\\", "\\\\")
+    hub_esc = str(HUB_DIR).replace("\\", "\\\\")
+    pool = " --pool=solo" if is_win else ""
+    (BASE_DIR / "ecosystem.config.js").write_text(f"""
 module.exports = {{
   apps : [
-    {{ name: 'isd-core', script: 'manage.py', cwd: '{news_dir_esc}', interpreter: '{py_path}', args: 'runserver 0.0.0.0:8000', windowsHide: true, env: {{ PYTHONPATH: '{news_dir_esc}' }} }},
-    {{ name: 'isd-worker', script: '{py_path}', cwd: '{news_dir_esc}', args: '-m celery -A isdnews worker --loglevel=info{pool_flag}', windowsHide: true, env: {{ PYTHONPATH: '{news_dir_esc}' }} }},
-    {{ name: 'isd-beat', script: '{py_path}', cwd: '{news_dir_esc}', args: '-m celery -A isdnews beat --loglevel=info', windowsHide: true, env: {{ PYTHONPATH: '{news_dir_esc}' }} }},
-    {{ name: 'isd-api', script: 'apps/api/server.js', cwd: '{hub_dir_esc}', windowsHide: true }}
+    {{ name: 'isd-core', script: 'manage.py', cwd: '{news_esc}', interpreter: '{py}', args: 'runserver 0.0.0.0:8000', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
+    {{ name: 'isd-worker', script: '{py}', cwd: '{news_esc}', args: '-m celery -A isdnews worker --loglevel=info{pool}', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
+    {{ name: 'isd-beat', script: '{py}', cwd: '{news_esc}', args: '-m celery -A isdnews beat --loglevel=info', windowsHide: true, env: {{ PYTHONPATH: '{news_esc}' }} }},
+    {{ name: 'isd-api', script: 'apps/api/server.js', cwd: '{hub_esc}', windowsHide: true }}
   ]
-}};"""
-    ecosystem_path.write_text(ecosystem_content, encoding='utf-8')
+}};""", encoding='utf-8')
     run_cmd("pm2 start ecosystem.config.js", cwd=BASE_DIR)
     run_cmd("pm2 save")
-    print("\n✅ Services started! Check with 'pm2 status'.")
+    print("\n✅ Started.")
 
-def stop(): run_cmd("pm2 stop isd-worker isd-beat isd-api isd-core || true")
+def stop(): run_cmd("pm2 stop all || true", cwd=BASE_DIR)
 def restart(): stop(); start()
-def status(): run_cmd("pm2 list | grep isd || echo 'No services.'")
-
-def show_config():
-    print("\n--- 🔍 Current ISD Configuration ---")
-    env_path = NEWS_DIR / ".env"
-    if not env_path.exists():
-        print("❌ Configuration file (.env) not found. Run 'isd install' first.")
-        return
-
-    lines = env_path.read_text().splitlines()
-    config = {}
-    for line in lines:
-        if "=" in line:
-            k, v = line.split("=", 1)
-            config[k.strip()] = v.strip()
-
-    provider = config.get("AI_PROVIDER", "Not set")
-    model = config.get("AI_MODEL", "Not set")
-    auth = config.get("AI_AUTH_METHOD", "apikey")
-    redis = config.get("USE_REDIS", "True")
-
-    print(f"🤖 AI Provider : {provider.upper()}")
-    print(f"📦 AI Model    : {model}")
-    print(f"🔑 Auth Method : {'OAuth 2.0' if auth == 'oauth' else 'API Key'}")
-    print(f"💾 Using Redis : {'Yes' if redis == 'True' else 'No (SQLite Broker)'}")
-    print(f"📂 Install Dir : {BASE_DIR}")
-    print("-" * 35)
-
-def configure_telegram():
-    print("\n--- 📱 Telegram Per-Team Configuration ---")
-    if not NEWS_DIR.exists():
-        print("❌ isdnews directory not found.")
-        return
-
-    is_win = sys.platform.startswith('win')
-    py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
-    
-    # Get list of teams from DB via python script
-    get_teams_script = """
-import os, sys, django
-sys.path.append('.')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
-django.setup()
-from collector.models import Team
-teams = list(Team.objects.all().values('code', 'name'))
-import json
-print(json.dumps(teams))
-"""
-    try:
-        output = subprocess.check_output(f'"{py}" -c "{get_teams_script}"', cwd=NEWS_DIR, shell=True).decode()
-        teams = json.loads(output.splitlines()[-1])
-    except Exception as e:
-        print(f"❌ Error fetching teams: {e}")
-        return
-
-    if not teams:
-        print("⚠️ No teams found in database. Run 'isd install' and check sources first.")
-        return
-
-    team_options = [f"{t['name']} ({t['code']})" for t in teams]
-    selected_team_str = pick("Select team to configure Telegram", team_options)
-    selected_team_code = selected_team_str.split('(')[1].split(')')[0]
-
-    chat_id = input(f"Enter Telegram Chat ID for team {selected_team_code}: ").strip()
-    
-    if not chat_id:
-        print("❌ Chat ID cannot be empty.")
-        return
-
-    # Update DB via python script
-    update_db_script = f"""
-import os, sys, django
-sys.path.append('.')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings')
-django.setup()
-from collector.models import Team, SystemConfig
-team = Team.objects.get(code='{selected_team_code}')
-cfg, created = SystemConfig.objects.get_or_create(
-    key='telegram_chat_id', 
-    team=team,
-    defaults={{'key_type': 'webhook', 'value': '{chat_id}', 'is_active': True}}
-)
-if not created:
-    cfg.value = '{chat_id}'
-    cfg.save()
-print("SUCCESS")
-"""
-    try:
-        subprocess.check_call(f'"{py}" -c "{update_db_script}"', cwd=NEWS_DIR, shell=True)
-        print(f"✅ Telegram Chat ID updated for team {selected_team_code}!")
-    except Exception as e:
-        print(f"❌ Error updating database: {e}")
+def status(): run_cmd("pm2 list | grep isd || echo 'None.'")
 
 def usage():
     print("""
-ISD Ecosystem CLI
-Sử dụng:
-  isd install             - Cài đặt môi trường từ đầu (venv, npm, db)
-  isd config ai           - Cấu hình AI Provider (Multi-Vendor + OAuth)
-  isd config telegram     - Cấu hình Group Telegram riêng cho từng Team
-  isd config telegram-bot - Cấu hình Token Telegram Bot chính
-  isd config show         - Kiểm tra Model và Vendor hiện tại
-  isd admin               - Tạo tài khoản Admin (Superuser)
-  isd start               - Chạy tất cả dịch vụ bằng PM2
-  isd stop                - Dừng tất cả dịch vụ
-  isd restart             - Khởi động lại dịch vụ
-  isd status              - Xem tình trạng các dịch vụ
-  isd model <name>        - Đổi nhanh model (VD: isd model qwen3:30b)
+ISD Ecosystem CLI v1.5.0
+Usage:
+  isd install             - Setup or Resume installation
+  isd admin               - Create Admin account
+  isd config ai           - Configure AI Provider
+  isd config telegram     - Configure Team Group IDs
+  isd config telegram-bot - Configure Main Bot Token
+  isd config show         - Show current config
+  isd start/stop/restart  - Manage services
+  isd status              - Show status
     """)
 
 if __name__ == "__main__":
@@ -457,15 +308,11 @@ if __name__ == "__main__":
         is_win = sys.platform.startswith('win')
         py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
         run_cmd(f'"{py}" manage.py createsuperuser', cwd=NEWS_DIR)
+    elif cmd in ["start", "stop", "restart", "status"]: globals()[cmd]()
     elif cmd == "config" and len(sys.argv) > 2:
-        if sys.argv[2] == "ai": configure_ai()
-        elif sys.argv[2] == "telegram": configure_telegram()
-        elif sys.argv[2] == "telegram-bot": configure_telegram_bot()
-        elif sys.argv[2] == "show": show_config()
-        else: usage()
-    elif cmd == "start": start()
-    elif cmd == "stop": stop()
-    elif cmd == "restart": restart()
-    elif cmd == "status": status()
-    elif cmd == "model" and len(sys.argv) > 2: set_model(sys.argv[2])
+        sub = sys.argv[2]
+        if sub == "ai": configure_ai()
+        elif sub == "telegram": configure_telegram_per_team()
+        elif sub == "telegram-bot": configure_telegram_bot()
+        elif sub == "show": show_config()
     else: usage()
