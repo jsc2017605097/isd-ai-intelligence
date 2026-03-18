@@ -5,8 +5,8 @@ import subprocess
 import json
 from pathlib import Path
 
-# ISD Ecosystem CLI - v1.4.0
-# Distribution Version (Multi-Vendor & OAuth Support)
+# ISD Ecosystem CLI - v1.4.1
+# Distribution Version (Robust Cross-Platform UI)
 
 BASE_DIR = Path(__file__).parent.absolute()
 NEWS_DIR = BASE_DIR / "isdnews"
@@ -20,45 +20,73 @@ def run_cmd(cmd, cwd=None, shell=True):
         sys.exit(1)
 
 def pick(title, options):
-    """Simple cross-platform arrow-key menu selector"""
-    import curses
+    """Zero-dependency cross-platform arrow-key selector"""
+    print(f"\n=== {title} ===")
+    print("(Use arrow keys/WASD to move, Enter to select)")
     
-    def _pick(stdscr):
-        curses.curs_set(0)
-        current_row = 0
+    current_idx = 0
+    
+    # Check if we are on Windows
+    is_windows = sys.platform.startswith('win')
+    
+    if is_windows:
+        import msvcrt
+        def get_key():
+            ch = msvcrt.getch()
+            if ch in [b'\x00', b'\xe0']: # Function key prefix
+                ch = msvcrt.getch()
+                if ch == b'H': return 'up'
+                if ch == b'P': return 'down'
+            if ch in [b'w', b'W']: return 'up'
+            if ch in [b's', b'S']: return 'down'
+            if ch == b'\r': return 'enter'
+            return None
+    else:
+        import tty, termios
+        def get_key():
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(sys.stdin.fileno())
+                ch = sys.stdin.read(1)
+                if ch == '\x1b':
+                    ch2 = sys.stdin.read(2)
+                    if ch2 == '[A': return 'up'
+                    if ch2 == '[B': return 'down'
+                if ch == '\r' or ch == '\n': return 'enter'
+                if ch == 'w': return 'up'
+                if ch == 's': return 'down'
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            return None
+
+    def show_menu(idx):
+        # Clear lines
+        for _ in range(len(options)):
+            sys.stdout.write("\033[K") # Clear line
+        sys.stdout.write(f"\033[{len(options)}A") # Move up
         
-        while True:
-            stdscr.clear()
-            stdscr.addstr(0, 0, f"=== {title} ===")
-            stdscr.addstr(1, 0, "(Use arrow keys to move, Enter to select)")
-            
-            for idx, option in enumerate(options):
-                if idx == current_row:
-                    stdscr.addstr(idx + 3, 0, f"> {option}", curses.A_REVERSE)
-                else:
-                    stdscr.addstr(idx + 3, 0, f"  {option}")
-            
-            key = stdscr.getch()
-            
-            if key == curses.KEY_UP and current_row > 0:
-                current_row -= 1
-            elif key == curses.KEY_DOWN and current_row < len(options) - 1:
-                current_row += 1
-            elif key == ord('\n'):
-                return options[current_row]
+        for i, option in enumerate(options):
+            if i == idx:
+                print(f"\033[96m> {option}\033[0m") # Cyan for selection
+            else:
+                print(f"  {option}")
+
+    # Initial print placeholders
+    for _ in range(len(options)): print("")
     
-    # Standard terminal input fallback if curses fails
-    try:
-        return curses.wrapper(_pick)
-    except:
-        print(f"\n{title}")
-        for i, o in enumerate(options):
-            print(f"{i+1}. {o}")
-        c = input(f"Select [1-{len(options)}]: ").strip()
-        return options[int(c)-1] if c.isdigit() and 1 <= int(c) <= len(options) else options[0]
+    while True:
+        show_menu(current_idx)
+        key = get_key()
+        if key == 'up' and current_idx > 0:
+            current_idx -= 1
+        elif key == 'down' and current_idx < len(options) - 1:
+            current_idx += 1
+        elif key == 'enter':
+            return options[current_idx]
 
 def configure_ai():
-    print("\n--- 🤖 AI Configuration ---")
+    print("\n--- AI Configuration ---")
     
     providers = ["ollama", "openai", "google", "anthropic", "openrouter"]
     provider = pick("Select AI Provider", providers)
@@ -99,10 +127,8 @@ def configure_ai():
         lines = env_path.read_text().splitlines() if env_path.exists() else []
         new_lines = []
         
-        # Prepare mapping for current env
         updates = config_data.copy()
         if env_path.parent == HUB_DIR:
-            # Hub uses some specific naming
             updates["LLM_API_STYLE"] = "openai" if provider != "ollama" else "ollama"
             updates["LLM_BASE_URL"] = config_data["AI_BASE_URL"]
             updates["CHAT_MODEL"] = config_data["AI_MODEL"]
@@ -132,11 +158,9 @@ def install():
     print("🚀 Installing ISD Ecosystem...")
     is_windows = sys.platform.startswith('win')
     
-    # Ask for Redis
     use_redis_input = input("❓ Do you want to use Redis? (Y/n): ").strip().lower()
     use_redis = "True" if use_redis_input != 'n' else "False"
 
-    # Find python
     python_cmds = ["python", "py", "python3"]
     py_cmd = "python"
     for cmd in python_cmds:
@@ -144,15 +168,12 @@ def install():
             subprocess.run(f"{cmd} --version", shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             py_cmd = cmd
             break
-        except:
-            continue
+        except: continue
 
-    # Setup News
     if NEWS_DIR.exists():
         print(f"📦 Configuring Pipeline (isdnews) using {py_cmd}...")
         logs_dir = NEWS_DIR / "logs"
         if not logs_dir.exists(): logs_dir.mkdir(parents=True, exist_ok=True)
-
         venv_dir = NEWS_DIR / "venv"
         run_cmd(f"{py_cmd} -m venv venv", cwd=NEWS_DIR)
         
@@ -172,15 +193,12 @@ def install():
             else:
                 (NEWS_DIR / ".env").write_text(f"DEBUG=True\nUSE_REDIS={use_redis}\nAI_PROVIDER=ollama\n")
         
-        # Configure AI during install
         configure_ai()
-        
         print("🗄️ Migrating Database...")
         run_cmd(f'"{python_path}" manage.py migrate', cwd=NEWS_DIR)
         print("📁 Collecting static files...")
         run_cmd(f'"{python_path}" manage.py collectstatic --noinput', cwd=NEWS_DIR)
     
-    # Setup Hub
     if HUB_DIR.exists():
         print("📦 Configuring Dashboard (isdnews-hub)...")
         if not (HUB_DIR / "data").exists(): (HUB_DIR / "data").mkdir(parents=True, exist_ok=True)
@@ -188,7 +206,6 @@ def install():
         if not (HUB_DIR / ".env").exists():
             env_content = f"PORT=8787\nSOURCE_DB_PATH={str(NEWS_DIR/'db.sqlite3').replace('\\','/')}\nHUB_DB_PATH={str(HUB_DIR/'data'/'hub.sqlite3').replace('\\','/')}\nLLM_BASE_URL=http://127.0.0.1:11434\n"
             (HUB_DIR / ".env").write_text(env_content)
-
     print("\n✅ Setup complete! Use 'isd start' to run.")
 
 def start():
@@ -202,13 +219,8 @@ def start():
     ecosystem_path = BASE_DIR / "ecosystem.config.js"
     news_dir_esc = str(NEWS_DIR).replace("\\", "\\\\")
     hub_dir_esc = str(HUB_DIR).replace("\\", "\\\\")
-    
-    if is_windows:
-        py_path = f"{news_dir_esc}\\\\venv\\\\Scripts\\\\python.exe"
-        pool_flag = " --pool=solo"
-    else:
-        py_path = f"{news_dir_esc}/venv/bin/python"
-        pool_flag = ""
+    py_path = str(NEWS_DIR / "venv" / ("Scripts" if is_windows else "bin") / "python").replace("\\", "\\\\")
+    pool_flag = " --pool=solo" if is_windows else ""
 
     ecosystem_content = f"""
 module.exports = {{
