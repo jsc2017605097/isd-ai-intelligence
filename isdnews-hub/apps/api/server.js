@@ -186,9 +186,9 @@ app.post('/api/chat/stream', async (req, res) => {
     res.end();
   } catch (e) { 
     console.error('[ERROR] Chat stream error:', e);
-    // Nếu xảy ra lỗi giữa chừng hoặc ngay đầu, gửi lại token là lỗi cho frontend luôn
+    // If error occurs midway, send error token to frontend
     if (!res.headersSent) res.setHeader('Content-Type', 'text/event-stream');
-    res.write(`data: ${JSON.stringify({ error: e.message || 'Lỗi không xác định' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: e.message || 'Unknown error' })}\n\n`);
     res.end(); 
   }
 });

@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 @shared_task
 def collect_data_from_source(source_id, team_code=None):
     """
-    Thu thp d liu cho mt Source c th.
-    Nu team_code != None, s ch fetch nu Source.team.code == team_code.
+    Collect data for a specific Source.
+    If team_code is provided, only fetch if Source.team.code matches.
     """
     try:
-        # Tm source, thm iu kin lc team nu c:
+        # Find source, filter by team if provided:
         if team_code:
             source = Source.objects.get(id=source_id, is_active=True, team__code=team_code)
         else:
@@ -52,13 +52,13 @@ def collect_data_from_source(source_id, team_code=None):
 
 @shared_task
 def collect_data_from_all_sources(team_code=None):
-    logger.info('[Celery Beat]  gi task collect_data_from_all_sources (team_code=%s)', team_code)
+    logger.info('[Celery Beat] Triggering task collect_data_from_all_sources (team_code=%s)', team_code)
     try:
         collector = DataCollector()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            # Trong DataCollector.collect_all_active_sources, bn  c tham s team_code
+            # Team_code parameter is already handled in DataCollector.collect_all_active_sources
             results = loop.run_until_complete(
                 collector.collect_all_active_sources(team_code=team_code)
             )
@@ -81,19 +81,19 @@ def collect_data_from_all_sources(team_code=None):
 @shared_task
 def scheduled_collection(team_code=None):
     """
-    Task gn ging cron: chy nh k, kim tra nhng Source no due (da vo fetch_interval)
-    Nu c team_code, ch check nhng Source.belongs_to team .
+    Cron-like task: runs periodically, checks which Sources are due (based on fetch_interval)
+    If team_code is provided, only check Sources belonging to that team.
     """
     try:
         now = timezone.now()
 
-        # Lc nhng Source cn fetch: is_active=True, v (last_fetched l NULL hoc  qu fetch_interval),
-        # thm iu kin team nu team_code c truyn vo.
+        # Filter sources to fetch: is_active=True, and (last_fetched is NULL or fetch_interval over),
+        # plus team condition if team_code is provided.
         base_qs = Source.objects.filter(is_active=True)
         if team_code:
             base_qs = base_qs.filter(team__code=team_code)
 
-        # extra  tnh iu kin v thi gian
+        # extra condition for time calculation
         sources_due = base_qs.extra(
             where=['last_fetched IS NULL OR (EXTRACT(EPOCH FROM %s) - EXTRACT(EPOCH FROM last_fetched)) >= fetch_interval'],
             params=[now]
@@ -108,7 +108,7 @@ def scheduled_collection(team_code=None):
 
         results = []
         for source in sources_due:
-            # Truyn team_code khi delay,  collect_data_from_source lc thm.
+            # Pass team_code when delaying, for later filtering in collect_data_from_source.
             results.append(
                 collect_data_from_source.delay(source.id, team_code)
             )
@@ -142,15 +142,15 @@ def update_article_and_config_sync(article_id, ai_content, ai_type, config_id):
 
 def sanitize_json_content(content):
     """
-    Lm sch ni dung  trnh li JSON parsing trong Teams
+    Sanitize content to avoid JSON parsing errors in Teams
     """
     if not content:
         return content
     
-    # Escape cc k t c bit JSON
+    # Escape special JSON characters
     content = str(content)
     
-    # Escape backslashes trc
+    # Escape backslashes first
     content = content.replace('\\', '\\\\')
     
     # Escape quotes
@@ -164,14 +164,14 @@ def sanitize_json_content(content):
     # Loi b cc k t control characters
     content = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', content)
     
-    # Escape HTML entities nu c
+    # Escape HTML entities if any
     content = html.escape(content, quote=False)
     
     return content
 
 def validate_json_structure(data):
     """
-    Kim tra v sa cu trc JSON
+    Check and fix JSON structure
     """
     try:
         # Th parse  kim tra tnh hp l
@@ -183,7 +183,7 @@ def validate_json_structure(data):
 
 @shared_task
 def process_openrouter_job(team_code=None):
-    logger.info('[Celery Beat]  gi task process_openrouter_job (team_code=%s)', team_code)
+    logger.info('[Celery Beat] Triggering task process_openrouter_job (team_code=%s)', team_code)
     try:
         # Kim tra job config
         config = JobConfig.objects.filter(job_type='openrouter').first()
@@ -191,7 +191,7 @@ def process_openrouter_job(team_code=None):
             logger.info("OpenRouter job is disabled")
             return {'success': True, 'result': None}
 
-        # Ch x l article t source active, cha x l AI v cha b claim bi worker khc.
+        # Only process articles from active sources, not yet AI processed, and not claimed by another worker.
         base_query = Article.objects.filter(
             is_ai_processed=False,
             is_ai_processing=False,
@@ -208,7 +208,7 @@ def process_openrouter_job(team_code=None):
             logger.info(f"No article to process (team_code={team_code})")
             return {'success': True, 'result': None}
 
-        # Round-robin theo source id
+        # Round-robin by source id
         selected_source_id = None
         if config.last_source_sent is not None:
             for sid in source_ids:
@@ -218,14 +218,14 @@ def process_openrouter_job(team_code=None):
         if selected_source_id is None:
             selected_source_id = source_ids[0]
 
-        # To danh sch th theo th t RR (source hin ti trc, sau  quay vng)
+        # Create list of sources in RR order (current source first, then wrap around)
         start_idx = source_ids.index(selected_source_id)
         rr_source_ids = source_ids[start_idx:] + source_ids[:start_idx]
 
         article = None
         claimed_source_id = None
 
-        # Claim 1 bi theo th t RR, trnh x l trng khi c nhiu worker/task chy ng thi.
+        # Claim 1 article in RR order to avoid duplicate processing when multiple workers/tasks run concurrently.
         for sid in rr_source_ids:
             with transaction.atomic():
                 candidate = (
@@ -253,7 +253,7 @@ def process_openrouter_job(team_code=None):
             logger.info(f"No claimable article found (team_code={team_code})")
             return {'success': True, 'result': None}
 
-        # Ly team code thc t t article.source.team
+        # Get actual team code from article.source.team
         real_team_code = None
         if article.source and article.source.team:
             real_team_code = article.source.team.code
@@ -262,15 +262,15 @@ def process_openrouter_job(team_code=None):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            # Gi AI (hm ny s t ng gi thng bo Telegram nu c cu hnh)
-            logger.info("Step 4: Gi call_openrouter_ai")
+            # Call AI (this will automatically notify Telegram if configured)
+            logger.info("Step 4: Calling call_openrouter_ai")
             ai_content = loop.run_until_complete(
                 call_openrouter_ai(article.content, article.url, ai_type=real_team_code)
             )
-            logger.info("Step 5:  hon thnh x l AI v gi thng bo")
+            logger.info("Step 5: AI processing and notification completed")
 
         except Exception as e:
-            # Nh claim nu gi AI li  ln sau c th retry.
+            # Unlock if AI call fails so it can be retried later.
             try:
                 Article.objects.filter(id=article.id).update(is_ai_processing=False)
             except Exception as release_err:
@@ -283,13 +283,13 @@ def process_openrouter_job(team_code=None):
             except Exception as e:
                 logger.error(f"Error closing event loop: {e}")
 
-        # Cp nht bi vit v con tr RR source
-        logger.info("Step 6: Cp nht bi vit v config")
+        # Update article and RR source pointer
+        logger.info("Step 6: Updating article and config")
         try:
             with transaction.atomic():
                 article_obj = Article.objects.select_for_update().get(id=article.id)
 
-                # Nu AI li/fallback th KHNG nh du  x l
+                # If AI fails/fallbacks, DO NOT mark as processed
                 if (not ai_content) or str(ai_content).startswith("AI_PROCESSING_ERROR:") or str(ai_content).strip() == (article_obj.content or '').strip():
                     article_obj.is_ai_processing = False
                     article_obj.save(update_fields=['is_ai_processing'])
@@ -306,7 +306,7 @@ def process_openrouter_job(team_code=None):
                 article_obj.is_ai_processing = False
                 article_obj.ai_type = real_team_code
 
-                # Chun ho tiu  hin th: u tin bullet u tin trong AI content (ting Vit)
+                # Normalize display title: prioritize the first bullet point in AI content (Vietnamese)
                 try:
                     title_candidate = None
                     for ln in (ai_content or '').split('\n'):
@@ -315,7 +315,7 @@ def process_openrouter_job(team_code=None):
                             title_candidate = ln[2:].strip().rstrip(' .;:')
                             break
                     if title_candidate:
-                        normalized_title = f"Phng vn: {title_candidate}"
+                        normalized_title = f"Interview: {title_candidate}"
                         article_obj.title = normalized_title[:140]
                 except Exception:
                     pass
@@ -334,7 +334,7 @@ def process_openrouter_job(team_code=None):
                 logger.error(f"Error releasing AI processing lock after update failure: {release_err}")
             return {'success': False, 'error': str(e)}
 
-        logger.info("Step 7: Hon thnh x l")
+        logger.info("Step 7: Finished processing")
         return {'success': True, 'result': True}
 
     except Exception as e:

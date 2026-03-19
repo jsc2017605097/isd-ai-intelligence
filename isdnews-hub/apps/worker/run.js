@@ -145,30 +145,30 @@ function buildDigest() {
   }
 
   const lines = [];
-  lines.push(`Bản tin tổng hợp 24h (${today})`);
+  lines.push(`Daily News Digest (${today})`);
   lines.push('');
-  lines.push(`Tổng số bài mới trong 24h: ${rows.length}`);
+  lines.push(`Total new articles (24h): ${rows.length}`);
   lines.push('');
 
   if (!rows.length) {
-    lines.push('Hiện chưa có bài mới trong 24h gần nhất.');
+    lines.push('No new articles found in the last 24 hours.');
   } else {
-    lines.push('Nguồn hoạt động nhiều nhất:');
+    lines.push('Top active sources:');
     Object.entries(bySource).sort((a,b)=>b[1]-a[1]).slice(0,5)
-      .forEach(([src,c],i)=>lines.push(`${i+1}. ${src} (${c} bài)`));
+      .forEach(([src,c],i)=>lines.push(`${i+1}. ${src} (${c} articles)`));
     lines.push('');
 
     Object.entries(byTeam).sort((a,b)=>b[1].length-a[1].length).forEach(([team, items]) => {
-      lines.push(`## ${team} (${items.length} bài)`);
+      lines.push(`## ${team} (${items.length} articles)`);
       items.slice(0, 4).forEach((x, i) => lines.push(`${i + 1}. ${x.title}`));
       lines.push('');
     });
 
-    lines.push('Top tiêu đề nổi bật:');
+    lines.push('Top headlines:');
     rows.slice(0, 10).forEach((x) => lines.push(`- ${x.title}`));
   }
 
-  const title = `Bản tin tổng hợp 24h ngày ${today}`;
+  const title = `Daily Digest - ${today}`;
   const content = lines.join('\n');
 
   hubDb.prepare('INSERT OR REPLACE INTO digest_daily(digest_date,title,content) VALUES (?,?,?)')

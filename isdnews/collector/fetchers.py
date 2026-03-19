@@ -218,7 +218,7 @@ class DataCollector:
         try:
             data = await RSSFetcher(source).fetch()
             existing = set(await sync_to_async(list)(Article.objects.filter(url__in=[a['url'] for a in data]).values_list('url', flat=True)))
-            # Lấy limit từ JobConfig
+            # Get limit from JobConfig
             def _get_crawl_limit():
                 from .models import JobConfig
                 cfg = JobConfig.objects.filter(job_type='crawl').first()

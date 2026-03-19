@@ -268,7 +268,7 @@ def install():
             t_name = input("\nTeam Name (e.g. Developer) [Enter to finish]: ").strip()
             if not t_name: break
             t_code = input(f"Team Code: ").strip().lower()
-            default_p = "You are a Senior Engineering Coach. Response in Vietnamese."
+            default_p = "You are a professional assistant. Response in Vietnamese."
             t_prompt = input(f"System Prompt [Enter for default]: ").strip() or default_p
             t_chat = input(f"Chat ID [optional]: ").strip()
             run_django_script(f"from collector.models import Team, SystemConfig; team, _ = Team.objects.get_or_create(code='{t_code}', defaults={{'name': '{t_name}', 'system_prompt': \"\"\"{t_prompt}\"\"\", 'is_active': True}}); \nif not _: team.system_prompt = \"\"\"{t_prompt}\"\"\"; team.save(); \nif '{t_chat}': SystemConfig.objects.update_or_create(key='telegram_chat_id', team=team, defaults={{'value': '{t_chat}', 'key_type': 'webhook', 'is_active': True}})")
@@ -282,7 +282,7 @@ def install():
 
 def start():
     is_win = sys.platform.startswith('win')
-    # Sửa đường dẫn Python: phải vào thư mục venv và thêm đuôi .exe trên Windows
+    # Use venv python path, add .exe on Windows
     py_exec = "pythonw.exe" if is_win else "python"
     venv_bin = "Scripts" if is_win else "bin"
     py = str(NEWS_DIR / "venv" / venv_bin / py_exec).replace("\\", "/")
@@ -307,7 +307,7 @@ module.exports = {{
   ]
 }};""", encoding='utf-8')
     
-    # Dọn dẹp an toàn không dùng 'true' của Linux
+    # Safe cleanup
     try: subprocess.run("pm2 delete all", shell=True, cwd=BASE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except: pass
     
