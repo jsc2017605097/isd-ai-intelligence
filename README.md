@@ -1,51 +1,67 @@
-# ISD - Automated Global Tech Intelligence & Security Watchdog
+# ISD Ecosystem - Intelligent Security & Global Intelligence Watchdog
 
-ISD (Intelligent Software Developer) là một hệ sinh thái tự động hóa toàn diện quy trình thu thập và xử lý thông tin từ mọi nguồn trên thế giới.
+ISD (Intelligent Software Developer) is a comprehensive automation ecosystem designed to crawl, process, and analyze information from global RSS feeds. It provides intelligent security signaling, automated summarization, and seamless translation to empower users with global insights without language barriers.
 
-## 🌟 Tính năng cốt lõi
+## 🌟 Core Features
 
-- **Auto-Crawl:** Tự động theo dõi và cào dữ liệu từ các nguồn RSS/Web bất kỳ trên toàn cầu.
-- **AI-Processing:** Tự động dịch và tóm tắt nội dung sang tiếng Việt bằng LLM (Ollama/vLLM).
-- **Security Watchdog:** Phân tích và phát hiện sớm các cảnh báo bảo mật, lỗ hổng (CVE) và sự cố hạ tầng.
-- **Interview Prep Track:** Chuyển đổi tin tức khô khan thành bộ câu hỏi phỏng vấn thực chiến (Case study, Troubleshooting, Interview tips).
-- **Interactive Hub:** Giao diện Dashboard hiện đại và Chatbot AI hỗ trợ giải đáp kỹ thuật 24/7.
+- **Intelligent Security Watchdog**: Automatically detects and alerts on security threats, CVEs, and infrastructure incidents from global sources.
+- **AI-Powered Summarization & Translation**: Leverages LLMs (Ollama, OpenRouter, OpenAI) to summarize complex news and translate them into your preferred language.
+- **Smart Industry Insights**: Perfect for tracking tech trends, interview preparation (case studies, troubleshooting), and corporate intelligence.
+- **Multi-Channel Notifications**: Receive instant updates via **Telegram** groups tailored to specific teams (e.g., Dev, Security, Management).
+- **Interactive Knowledge Hub**: A sleek web dashboard to browse aggregated articles, plus an **AI Chat** interface for deep-diving into specific topics.
+- **Admin Management**: Easy-to-use administrative interface to manage sources, teams, and system configurations.
 
-## 🚀 Cài đặt nhanh
+## 🛠 How It Works
 
-### 🐧 Cho Linux / macOS
-1. **Tải mã nguồn:**
-   ```bash
-   git clone <URL_CUA_SEP> isd-ecosystem
-   cd isd-ecosystem
-   ```
-2. **Cài đặt CLI:**
-   ```bash
-   chmod +x bootstrap.sh
-   ./bootstrap.sh
-   ```
-3. **Cài đặt hệ thống (Tự động):**
-   ```bash
-   isd install
-   ```
-   *(Hệ thống sẽ hỏi sếp có muốn dùng Redis không. Nếu không có Redis, sếp chọn 'n' để chạy chế độ Database Broker).*
+1.  **Crawl**: System monitors global RSS feeds based on your configured sources.
+2.  **Process**: AI triggers to translate, summarize, and extract key insights.
+3.  **Notify**: Instant alerts are sent to designated Telegram chats.
+4.  **Explore**: Access the **ISD Hub** to read full reports and chat with the AI about any article.
 
-### 🪟 Cho Windows
-1. **Tải mã nguồn:**
-   - `git clone <URL_CUA_SEP> isd-ecosystem`
-   - Hoặc tải file ZIP và giải nén.
-2. **Chạy bộ cài:**
-   - Click đúp vào file **`install.bat`** (Nó sẽ tự lo mọi thứ).
-3. **Sử dụng:**
-   - Mở terminal mới và gõ `isd install`.
+## 🚀 Quick Start
 
-## 🛠 Lệnh quản lý (ISD CLI)
+### 🪟 For Windows
+1.  **Clone the Repository**:
+    ```bash
+    git clone https://github.com/jsc2017605097/isd-ai-intelligence
+    cd isd-ai-intelligence
+    ```
+2.  **Run Installer**: Double-click the **`install.bat`** file. It will set up the environment and dependencies automatically.
+3.  **Configure**: Run `isd install` in your terminal to initialize the database and AI providers.
 
-- `isd install`: Thiết lập môi trường (venv, npm, db). Có hỗ trợ chế độ **No-Redis** dùng SQLite làm Broker.
-- `isd start`: Khởi động toàn bộ pipeline và web dashboard.
-- `isd stop`: Dừng các dịch vụ đang chạy ngầm.
-- `isd restart`: Khởi động lại hệ thống.
-- `isd status`: Kiểm tra tình trạng vận hành của các dịch vụ.
-- `isd model <name>`: Thay đổi model AI xử lý (VD: `isd model qwen3:30b`).
+### 🐧 For Linux / macOS
+1.  **Clone the Repository**:
+    ```bash
+    git clone https://github.com/jsc2017605097/isd-ai-intelligence
+    cd isd-ai-intelligence
+    ```
+2.  **Run Setup**:
+    ```bash
+    bash install.sh
+    ```
+3.  **Initialize**: Run `isd install` to complete the setup.
+
+## ⚙️ Configuration & Management
+
+You can manage the system via the **Admin Dashboard** (usually at `http://localhost:8000/admin`) or using the **ISD CLI**:
+
+- `isd install`: Setup or resume installation (venv, npm, db).
+- `isd start`: Launch all services (Core, Worker, Beat, Hub API).
+- `isd stop`: Stop all background services.
+- `isd status`: Check the operational status of all components.
+- `isd config ai`: Quickly switch or configure AI providers.
+
+## 📸 Screenshots & Media
+
+To add your own screenshots:
+1.  Place your images in the `docs/images/` directory.
+2.  Update the links below:
+
+![NEWS HUB Placeholder](docs/images/newhub.png)
+*Figure 1: ISD Hub Dashboard*
+
+![NEW TELEGRAM](docs/images/newtelegram.png)
+*Figure 2: Telegram Chat*
 
 ---
-"Biến tin tức thế giới thành kiến thức thực chiến của bạn."
+*"Turning global news into your actionable intelligence."*
