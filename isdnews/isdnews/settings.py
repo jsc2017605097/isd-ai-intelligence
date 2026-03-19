@@ -10,9 +10,10 @@ try:
 except ImportError:
     pass
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-for-local-dev')
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-default-key-for-local-dev')
+DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -77,10 +78,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 USE_REDIS = os.getenv('USE_REDIS', 'False') == 'True'
 if USE_REDIS:
     CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
+    CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
 else:
     CELERY_BROKER_URL = 'sqla+sqlite:///' + str(BASE_DIR / 'broker.sqlite3')
-
-CELERY_RESULT_BACKEND = 'db+sqlite:///' + str(BASE_DIR / 'results.sqlite3')
+    CELERY_RESULT_BACKEND = 'db+sqlite:///' + str(BASE_DIR / 'results.sqlite3')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

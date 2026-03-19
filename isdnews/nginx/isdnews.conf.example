@@ -1,15 +1,15 @@
 server {
     listen 80;
-    server_name isdnews.telehub.vn;
+    server_name YOUR_DOMAIN_OR_IP;
 
     location = /favicon.ico { access_log off; log_not_found off; }
 
     location /static/ {
-        alias /home/khiemtv/sources/isdnews/staticfiles/;
+        alias /path/to/your/isdnews/staticfiles/;
     }
 
     location / {
         include proxy_params;
-        proxy_pass http://unix:/home/khiemtv/sources/isdnews/isdnews.sock;
+        proxy_pass http://unix:/path/to/your/isdnews/isdnews.sock;
     }
 }

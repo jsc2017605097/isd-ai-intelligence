@@ -23,8 +23,8 @@ class TeamAdmin(admin.ModelAdmin):
     ordering = ['name']
     
     def get_readonly_fields(self, request, obj=None):
-        if obj:  # Nu ang edit
-            return ['code']  # Khng cho php sa code khi  to
+        if obj:  # If editing existing object
+            return ['code']  # Prevent editing code after creation
         return []
 
 @admin.register(Source)
@@ -45,9 +45,9 @@ class SourceAdmin(admin.ModelAdmin):
     
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
-        if not obj:  # Ch p dng cho form to mi
+        if not obj:  # Only for new objects
             form.base_fields['params'].initial = {
-                "prompt": "hy ly cc url lin quan n [ni dung bn cn ly] sau  gi li cho ti , yu cu d liu tr v ch l 1 mng cc url, khng c sai format nh ti yu cu"
+                "prompt": "Please extract all URLs related to [topic] and return them as a JSON array of strings. Maintain the exact format requested."
             }
         return form
 
@@ -82,19 +82,19 @@ class ArticleAdmin(admin.ModelAdmin):
         if obj.content and len(obj.content) > 100:
             return format_html('<span title="{}">{}&hellip;</span>', obj.content, obj.content[:100])
         return obj.content or ''
-    short_content.short_description = 'Ni dung'
+    short_content.short_description = 'Content'
 
     def short_summary(self, obj):
         if obj.summary and len(obj.summary) > 100:
             return format_html('<span title="{}">{}&hellip;</span>', obj.summary, obj.summary[:100])
         return obj.summary or ''
-    short_summary.short_description = 'Tm tt'
+    short_summary.short_description = 'Summary'
 
     def short_ai_content(self, obj):
         if obj.ai_content and len(obj.ai_content) > 100:
             return format_html('<span title="{}">{}&hellip;</span>', obj.ai_content, obj.ai_content[:100])
         return obj.ai_content or ''
-    short_ai_content.short_description = 'Ni dung AI'
+    short_ai_content.short_description = 'AI Content'
 
     def team_name(self, obj):
         return obj.team_name
@@ -141,7 +141,7 @@ class AILogAdmin(admin.ModelAdmin):
     short_result.short_description = 'Result'
     
     def get_team_name(self, obj):
-        """Ly tn team t article thng qua URL"""
+        """Get team name from article via URL"""
         try:
             article = Article.objects.filter(url=obj.url).first()
             if article and article.source and article.source.team:
@@ -185,7 +185,7 @@ class SystemConfigAdmin(admin.ModelAdmin):
         return form
     
     def get_masked_value(self, obj):
-        """Che giu gi tr nhy cm nh API key"""
+        """Mask sensitive values like API keys"""
         if obj.key_type == 'api_key' and obj.value:
             return f"{obj.value[:4]}...{obj.value[-4:]}"
         elif obj.key_type == 'webhook':
@@ -279,9 +279,9 @@ class AISettingsAdmin(admin.ModelAdmin):
             
             try:
                 subprocess.run("pm2 restart all --update-env", shell=True, cwd=BASE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                messages.success(request, "Cấu hình AI đã được lưu thành công. Hệ thống PM2 đã tự động khởi động lại!")
+                messages.success(request, "AI configuration saved successfully. PM2 services have been restarted!")
             except Exception as e:
-                messages.warning(request, f"Đã lưu file cấu hình nhưng lỗi khi restart PM2: {e}. Vui lòng chạy lệnh 'isd restart' bằng tay.")
+                messages.warning(request, f"Configuration file saved, but error restarting PM2: {e}. Please run 'isd restart' manually.")
                 
             return HttpResponseRedirect(request.path)
 
@@ -299,7 +299,7 @@ class AISettingsAdmin(admin.ModelAdmin):
         return render(request, "admin/ai_settings.html", context)
 
 def get_app_list(self, request, app_label=None):
-    """Ty chnh th t hin th cc model trong admin"""
+    """Customize display order of models in admin"""
     app_dict = self._build_app_dict(request, app_label)
     app_list = sorted(app_dict.values(), key=lambda x: x['name'].lower())
 

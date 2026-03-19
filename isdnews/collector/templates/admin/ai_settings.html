@@ -69,14 +69,14 @@
 {% block content %}
 <div id="content-main">
     <div class="callout">
-        <b>Lưu ý:</b> Bất kỳ sự thay đổi nào tại đây sẽ tự động ghi đè cấu hình vào tệp <code>.env</code> và cố gắng khởi động lại toàn bộ hệ thống PM2.
+        <b>Note:</b> Any changes here will overwrite the <code>.env</code> file and attempt to restart all PM2 services.
     </div>
 
     <form method="post" class="ai-settings-container">
         {% csrf_token %}
 
         <div class="form-row">
-            <label for="AI_PROVIDER">AI Provider (Nhà Cung Cấp)</label>
+            <label for="AI_PROVIDER">AI Provider</label>
             <select name="AI_PROVIDER" id="AI_PROVIDER" required>
                 <option value="ollama" {% if config.AI_PROVIDER == 'ollama' %}selected{% endif %}>Ollama (Local/Self-hosted)</option>
                 <option value="openai" {% if config.AI_PROVIDER == 'openai' %}selected{% endif %}>OpenAI</option>
@@ -84,13 +84,13 @@
                 <option value="anthropic" {% if config.AI_PROVIDER == 'anthropic' %}selected{% endif %}>Anthropic (Claude)</option>
                 <option value="openrouter" {% if config.AI_PROVIDER == 'openrouter' %}selected{% endif %}>OpenRouter</option>
             </select>
-            <span class="help-text">Chọn hãng AI mà hệ thống (cả Web lẫn Crawl Job) sẽ dùng để xử lý bài báo và chat.</span>
+            <span class="help-text">Select the AI provider that the system (both Web and Crawl Job) will use for processing and chat.</span>
         </div>
 
         <div class="form-row">
-            <label for="AI_MODEL">Model Name (Tên Model)</label>
+            <label for="AI_MODEL">Model Name</label>
             <input type="text" name="AI_MODEL" id="AI_MODEL" value="{{ config.AI_MODEL }}" required>
-            <span class="help-text">VD: <code>qwen3:30b-a3b</code>, <code>gpt-4o-mini</code>, <code>gemini-1.5-pro</code>...</span>
+            <span class="help-text">e.g., <code>qwen3:30b-a3b</code>, <code>gpt-4o-mini</code>, <code>gemini-1.5-pro</code>...</span>
         </div>
 
         <!-- Section for API Keys (Non-Ollama) -->
@@ -98,13 +98,13 @@
             <div class="form-row">
                 <label for="AI_API_KEY">API Key</label>
                 <input type="text" name="AI_API_KEY" id="AI_API_KEY" value="{{ config.AI_API_KEY|default:'' }}">
-                <span class="help-text">Nhập chuỗi Token/API Key được cấp bởi nhà cung cấp.</span>
+                <span class="help-text">Enter the API Key provided by your AI provider.</span>
             </div>
             
             <div class="form-row" id="section_openai_url" style="display: none; border-bottom: none;">
-                <label for="AI_BASE_URL">Base URL (Tùy chọn cho OpenAI Compatible)</label>
+                <label for="AI_BASE_URL">Base URL (Optional for OpenAI Compatible)</label>
                 <input type="text" name="AI_BASE_URL" id="AI_BASE_URL" value="{{ config.AI_BASE_URL|default:'' }}">
-                <span class="help-text">Dùng để trỏ sang API tương thích OpenAI khác nếu không xài hàng chính chủ (chẳng hạn xài <code>DeepSeek</code> qua OpenAI protocol). Bỏ trống sẽ dùng mặc định.</span>
+                <span class="help-text">Use this to point to other OpenAI-compatible APIs (e.g., <code>DeepSeek</code> via OpenAI protocol). Leave blank for default.</span>
             </div>
         </div>
 
@@ -113,12 +113,12 @@
             <div class="form-row" style="border-bottom: none;">
                 <label for="OLLAMA_BASE_URL">Ollama Base URL</label>
                 <input type="text" name="OLLAMA_BASE_URL" id="OLLAMA_BASE_URL" value="{{ config.OLLAMA_BASE_URL|default:'http://127.0.0.1:11434' }}">
-                <span class="help-text">Đường dẫn tời server Ollama. VD: <code>http://127.0.0.1:11434</code></span>
+                <span class="help-text">URL to your Ollama server. e.g., <code>http://127.0.0.1:11434</code></span>
             </div>
         </div>
 
         <div class="submit-row">
-            <input type="submit" value="Lưu và Khởi Động Lại Hệ Thống" class="default" name="_save">
+            <input type="submit" value="Save and Restart Services" class="default" name="_save">
         </div>
     </form>
 </div>

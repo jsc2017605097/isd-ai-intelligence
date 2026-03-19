@@ -20,6 +20,16 @@ def run_cmd(cmd, cwd=None, shell=True):
         print(f"Error executing: {cmd}")
         sys.exit(1)
 
+def get_python_exe():
+    is_win = sys.platform.startswith('win')
+    venv_bin = "Scripts" if is_win else "bin"
+    py_exe = "python.exe" if is_win else "python"
+    venv_py = NEWS_DIR / "venv" / venv_bin / py_exe
+    if venv_py.exists():
+        return str(venv_py)
+    # Fallback to system python
+    return sys.executable
+
 def run_django_script(script_content):
     temp_script = NEWS_DIR / "_temp_script.py"
     full_content = f"""
@@ -31,8 +41,7 @@ django.setup()
 """
     temp_script.write_text(full_content, encoding='utf-8')
     try:
-        is_win = sys.platform.startswith('win')
-        py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
+        py = get_python_exe()
         subprocess.check_call(f'"{py}" _temp_script.py', cwd=NEWS_DIR, shell=True)
     finally:
         if temp_script.exists(): temp_script.unlink()
@@ -173,8 +182,7 @@ def configure_telegram_bot():
 
 def configure_telegram_per_team():
     print("\n--- Telegram Per-Team Configuration ---")
-    is_win = sys.platform.startswith('win')
-    py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
+    py = get_python_exe()
     get_teams = "import os, sys, django, json; sys.path.append('.'); os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'isdnews.settings'); django.setup(); from collector.models import Team; print(json.dumps(list(Team.objects.all().values('code', 'name'))))"
     try:
         out = subprocess.check_output(f'"{py}" -c "{get_teams}"', cwd=NEWS_DIR, shell=True).decode()
@@ -235,29 +243,38 @@ def install():
     if NEWS_DIR.exists():
         (NEWS_DIR/"logs").mkdir(parents=True, exist_ok=True)
         if mode == "fresh": run_cmd(f"{py_cmd} -m venv venv", cwd=NEWS_DIR)
+        
+        is_win = sys.platform.startswith('win')
         exec_p = "Scripts" if is_win else "bin"
         python = NEWS_DIR / "venv" / exec_p / ("python.exe" if is_win else "python")
         pip = NEWS_DIR / "venv" / exec_p / ("pip.exe" if is_win else "pip")
+        
+        print("📥 Installing Python dependencies...")
         run_cmd(f'"{pip}" install -r requirements.txt', cwd=NEWS_DIR)
         run_cmd(f'"{python}" -m playwright install chromium', cwd=NEWS_DIR)
         if not (NEWS_DIR / ".env").exists() or mode == "fresh":
+            import secrets
+            sk = secrets.token_urlsafe(50)
             example = NEWS_DIR / ".env.example"
             lines = example.read_text().splitlines() if example.exists() else []
             new_lines = []
             for l in lines:
-                if l.startswith("USE_REDIS="): new_lines.append(f"USE_REDIS={use_redis}")
+                if l.startswith("DJANGO_SECRET_KEY="): new_lines.append(f"DJANGO_SECRET_KEY={sk}")
+                elif l.startswith("USE_REDIS="): new_lines.append(f"USE_REDIS={use_redis}")
                 elif l.startswith("CELERY_BROKER_URL=") and use_redis == "False": new_lines.append(f"# {l}")
-                elif l.startswith("DEBUG="): new_lines.append("DEBUG=True")
                 else: new_lines.append(l)
             (NEWS_DIR / ".env").write_text("\n".join(new_lines))
+            
         run_cmd(f'"{python}" manage.py migrate', cwd=NEWS_DIR)
         run_cmd(f'"{python}" manage.py collectstatic --noinput', cwd=NEWS_DIR)
+        
     if HUB_DIR.exists():
         (HUB_DIR / "data").mkdir(parents=True, exist_ok=True)
         run_cmd("npm install", cwd=HUB_DIR)
         if not (HUB_DIR / ".env").exists() or mode == "fresh":
             db_rel = str(NEWS_DIR/'db.sqlite3').replace('\\','/')
-            (HUB_DIR / ".env").write_text(f"PORT=8787\nSOURCE_DB_PATH={db_rel}\nHUB_DB_PATH=./data/hub.sqlite3\n")
+            core_env = (NEWS_DIR / ".env").read_text()
+            (HUB_DIR / ".env").write_text(f"{core_env}\nPORT=8787\nSOURCE_DB_PATH={db_rel}\nHUB_DB_PATH=./data/hub.sqlite3\n")
     if mode == "fresh":
         step_title(2, "Admin Account")
         run_cmd(f'"{python}" manage.py createsuperuser', cwd=NEWS_DIR)
@@ -322,7 +339,11 @@ def stop():
 def restart(): 
     stop()
     start()
-def status(): run_cmd("pm2 list | grep isd || echo 'None.'")
+def status():
+    try:
+        subprocess.run("pm2 list", shell=True, check=True)
+    except:
+        print("❌ PM2 is not running or not found.")
 
 def usage():
     print("""
@@ -343,8 +364,7 @@ if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "install": install()
     elif cmd == "admin": 
-        is_win = sys.platform.startswith('win')
-        py = str(NEWS_DIR / "venv" / ("Scripts" if is_win else "bin") / ("python.exe" if is_win else "python"))
+        py = get_python_exe()
         run_cmd(f'"{py}" manage.py createsuperuser', cwd=NEWS_DIR)
     elif cmd in ["start", "stop", "restart", "status"]: globals()[cmd]()
     elif cmd == "config" and len(sys.argv) > 2:

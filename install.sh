@@ -1,38 +1,64 @@
 #!/usr/bin/env bash
-# ISD Bootstrap - chạy 1 lần duy nhất để cài lệnh `isd`
+# ISD Ecosystem Bootstrap Script (Optimized)
 set -e
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "🚀 ISD Ecosystem Bootstrap"
 
-echo "🚀 ISD Bootstrap"
+# --- 1. Dependency Checks & Installation ---
+OS="$(uname -s)"
 
-# 1. Python
-if ! command -v python3 &>/dev/null; then
-  sudo apt-get update -qq && sudo apt-get install -y python3 python3-venv python3-dev
-fi
+install_dependencies() {
+    if command -v apt-get &>/dev/null; then
+        sudo apt-get update -qq
+        sudo apt-get install -y python3 python3-venv python3-dev curl git
+    elif command -v yum &>/dev/null; then
+        sudo yum install -y python3 python3-devel curl git
+    elif command -v brew &>/dev/null; then
+        brew install python node pm2
+    fi
+}
 
-# 2. Node.js
+echo "📦 Checking system dependencies..."
+install_dependencies
+
+# Node.js & PM2
 if ! command -v node &>/dev/null; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-  sudo apt-get install -y nodejs
+    echo "📥 Installing Node.js..."
+    if command -v apt-get &>/dev/null; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+    fi
 fi
 
-# 3. PM2
 if ! command -v pm2 &>/dev/null; then
-  sudo npm install -g pm2
+    echo "📥 Installing PM2 globally..."
+    sudo npm install -g pm2
 fi
 
-# 4. Chromium
-if ! command -v chromium-browser &>/dev/null && ! command -v chromium &>/dev/null; then
-  sudo apt-get install -y chromium-browser 2>/dev/null || sudo apt-get install -y chromium 2>/dev/null || true
+# --- 2. ISD CLI Registration ---
+echo "⚓ Registering 'isd' command..."
+
+BIN_DIR="/usr/local/bin"
+if [ ! -w "$BIN_DIR" ]; then
+    BIN_DIR="$HOME/.local/bin"
+    mkdir -p "$BIN_DIR"
+    if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+        echo "export PATH=\$PATH:$BIN_DIR" >> "$HOME/.bashrc"
+        echo "export PATH=\$PATH:$BIN_DIR" >> "$HOME/.zshrc"
+        echo "⚠️ Added $BIN_DIR to PATH. Please restart your terminal or run: source ~/.bashrc"
+    fi
 fi
 
-# 5. Đăng ký lệnh `isd` vào PATH
 cat > /tmp/isd_cmd << EOF
 #!/usr/bin/env bash
 python3 "$SCRIPT_DIR/isd.py" "\$@"
 EOF
-sudo mv /tmp/isd_cmd /usr/local/bin/isd
-sudo chmod +x /usr/local/bin/isd
+
+sudo mv /tmp/isd_cmd "$BIN_DIR/isd" 2>/dev/null || mv /tmp/isd_cmd "$BIN_DIR/isd"
+chmod +x "$BIN_DIR/isd"
 
 echo ""
-echo "✅ Xong! Từ giờ dùng lệnh: isd install / isd start"
+echo "✅ Bootstrap complete!"
+echo "👉 You can now run: isd install"
+echo ""
