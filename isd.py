@@ -283,7 +283,7 @@ def install():
 def start():
     is_win = sys.platform.startswith('win')
     # Sửa đường dẫn Python: phải vào thư mục venv và thêm đuôi .exe trên Windows
-    py_exec = "python.exe" if is_win else "python"
+    py_exec = "pythonw.exe" if is_win else "python"
     venv_bin = "Scripts" if is_win else "bin"
     py = str(NEWS_DIR / "venv" / venv_bin / py_exec).replace("\\", "/")
     
