@@ -186,7 +186,7 @@ class JobConfig(models.Model):
     ]
     job_type = models.CharField(max_length=50, choices=JOB_TYPE_CHOICES, unique=True)
     enabled = models.BooleanField(default=True)
-    limit = models.IntegerField(default=10)
+    limit = models.IntegerField(default=1)
     round_robin_types = models.JSONField(default=list, blank=True)  # ['dev', 'ba', 'system']
     last_type_sent = models.CharField(max_length=20, blank=True, default='')
     last_source_sent = models.IntegerField(null=True, blank=True)

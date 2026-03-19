@@ -136,7 +136,7 @@ def configure_jobs():
     step_title(6, "Job Configuration")
     crawl_limit = input("Crawl Job - Articles per source [default: 10]: ").strip() or "10"
     crawl_interval = input("Crawl Job - Frequency in minutes [default: 5]: ").strip() or "5"
-    ai_limit = input("AI Job - Articles per run [default: 5]: ").strip() or "5"
+    ai_limit = input("AI Job - Articles per run [default: 1]: ").strip() or "1"
     ai_interval = input("AI Job - Frequency in minutes [default: 30]: ").strip() or "30"
     run_django_script(f"""
 from collector.models import JobConfig
