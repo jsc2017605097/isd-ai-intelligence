@@ -53,10 +53,6 @@ You can manage the system via the **Admin Dashboard** (usually at `http://localh
 
 ## 📸 Screenshots & Media
 
-To add your own screenshots:
-1.  Place your images in the `docs/images/` directory.
-2.  Update the links below:
-
 ![NEWS HUB Placeholder](docs/images/newhub.png)
 *Figure 1: ISD Hub Dashboard*
 
