@@ -1,0 +1,153 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+    .ai-settings-container {
+        max-width: 800px;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-top: 15px;
+    }
+    .form-row {
+        margin-bottom: 20px;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 20px;
+    }
+    .form-row:last-child {
+        border-bottom: none;
+    }
+    .form-row label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 8px;
+        color: #333;
+    }
+    .form-row input[type="text"], .form-row select {
+        width: 100%;
+        max-width: 600px;
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .help-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+        display: block;
+    }
+    .submit-row {
+        background: #f8f8f8;
+        padding: 15px 20px;
+        border-radius: 0 0 8px 8px;
+        margin: 0 -20px -20px -20px;
+        text-align: right;
+    }
+    .callout {
+        background-color: #e0f2fe;
+        border-left: 4px solid #0ea5e9;
+        padding: 12px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #0c4a6e;
+    }
+    .provider-section {
+        display: none;
+        background: #fafafa;
+        padding: 15px;
+        border-radius: 6px;
+        border: 1px dashed #ddd;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="callout">
+        <b>Lưu ý:</b> Bất kỳ sự thay đổi nào tại đây sẽ tự động ghi đè cấu hình vào tệp <code>.env</code> và cố gắng khởi động lại toàn bộ hệ thống PM2.
+    </div>
+
+    <form method="post" class="ai-settings-container">
+        {% csrf_token %}
+
+        <div class="form-row">
+            <label for="AI_PROVIDER">AI Provider (Nhà Cung Cấp)</label>
+            <select name="AI_PROVIDER" id="AI_PROVIDER" required>
+                <option value="ollama" {% if config.AI_PROVIDER == 'ollama' %}selected{% endif %}>Ollama (Local/Self-hosted)</option>
+                <option value="openai" {% if config.AI_PROVIDER == 'openai' %}selected{% endif %}>OpenAI</option>
+                <option value="google" {% if config.AI_PROVIDER == 'google' %}selected{% endif %}>Google Gemini</option>
+                <option value="anthropic" {% if config.AI_PROVIDER == 'anthropic' %}selected{% endif %}>Anthropic (Claude)</option>
+                <option value="openrouter" {% if config.AI_PROVIDER == 'openrouter' %}selected{% endif %}>OpenRouter</option>
+            </select>
+            <span class="help-text">Chọn hãng AI mà hệ thống (cả Web lẫn Crawl Job) sẽ dùng để xử lý bài báo và chat.</span>
+        </div>
+
+        <div class="form-row">
+            <label for="AI_MODEL">Model Name (Tên Model)</label>
+            <input type="text" name="AI_MODEL" id="AI_MODEL" value="{{ config.AI_MODEL }}" required>
+            <span class="help-text">VD: <code>qwen3:30b-a3b</code>, <code>gpt-4o-mini</code>, <code>gemini-1.5-pro</code>...</span>
+        </div>
+
+        <!-- Section for API Keys (Non-Ollama) -->
+        <div id="section_apikey" class="provider-section">
+            <div class="form-row">
+                <label for="AI_API_KEY">API Key</label>
+                <input type="text" name="AI_API_KEY" id="AI_API_KEY" value="{{ config.AI_API_KEY|default:'' }}">
+                <span class="help-text">Nhập chuỗi Token/API Key được cấp bởi nhà cung cấp.</span>
+            </div>
+            
+            <div class="form-row" id="section_openai_url" style="display: none; border-bottom: none;">
+                <label for="AI_BASE_URL">Base URL (Tùy chọn cho OpenAI Compatible)</label>
+                <input type="text" name="AI_BASE_URL" id="AI_BASE_URL" value="{{ config.AI_BASE_URL|default:'' }}">
+                <span class="help-text">Dùng để trỏ sang API tương thích OpenAI khác nếu không xài hàng chính chủ (chẳng hạn xài <code>DeepSeek</code> qua OpenAI protocol). Bỏ trống sẽ dùng mặc định.</span>
+            </div>
+        </div>
+
+        <!-- Section for Ollama -->
+        <div id="section_ollama" class="provider-section">
+            <div class="form-row" style="border-bottom: none;">
+                <label for="OLLAMA_BASE_URL">Ollama Base URL</label>
+                <input type="text" name="OLLAMA_BASE_URL" id="OLLAMA_BASE_URL" value="{{ config.OLLAMA_BASE_URL|default:'http://127.0.0.1:11434' }}">
+                <span class="help-text">Đường dẫn tời server Ollama. VD: <code>http://127.0.0.1:11434</code></span>
+            </div>
+        </div>
+
+        <div class="submit-row">
+            <input type="submit" value="Lưu và Khởi Động Lại Hệ Thống" class="default" name="_save">
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const providerSel = document.getElementById("AI_PROVIDER");
+        const secApiKey = document.getElementById("section_apikey");
+        const secOllama = document.getElementById("section_ollama");
+        const secOpenAiUrl = document.getElementById("section_openai_url");
+
+        function toggleSections() {
+            const v = providerSel.value;
+            if (v === "ollama") {
+                secOllama.style.display = "block";
+                secApiKey.style.display = "none";
+            } else {
+                secOllama.style.display = "none";
+                secApiKey.style.display = "block";
+                if (v === "openai") {
+                    secOpenAiUrl.style.display = "block";
+                } else {
+                    secOpenAiUrl.style.display = "none";
+                }
+            }
+        }
+        
+        providerSel.addEventListener("change", toggleSections);
+        toggleSections();
+    });
+</script>
+{% endblock %}

@@ -18,8 +18,8 @@ from django.contrib import admin
 from django.urls import path
 from django.conf import settings
 
-admin.site.site_header = getattr(settings, 'ADMIN_SITE_HEADER', 'BS24 ISD News Collector')
-admin.site.site_title = getattr(settings, 'ADMIN_SITE_TITLE', 'BS24 ISD News')
+admin.site.site_header = getattr(settings, 'ADMIN_SITE_HEADER', 'ISD News Collector')
+admin.site.site_title = getattr(settings, 'ADMIN_SITE_TITLE', 'ISD News')
 admin.site.index_title = getattr(settings, 'ADMIN_INDEX_TITLE', 'News Data Management')
 
 urlpatterns = [

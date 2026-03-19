@@ -98,6 +98,8 @@ async def call_openrouter_ai(content: str, url: str, ai_type: str = "dev") -> st
     api_key = os.getenv("AI_API_KEY")
     base_url = os.getenv("AI_BASE_URL")
     
+    logger.info(f"[{ai_type}] Starting AI Job | Vendor: {provider.upper()} | Model: {configured_model}")
+
     if not content or not str(content).strip():
         return f"Cannot analyze content from source: {url}."
 

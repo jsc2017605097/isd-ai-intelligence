@@ -253,3 +253,11 @@ class UserProfile(models.Model):
         choices=[('beginner', 'Beginner'), ('intermediate', 'Intermediate'), ('advanced', 'Advanced')],
         default='beginner'
     )
+
+class AISettings(models.Model):
+    """Dummy model to mount AI Config view in Django Admin"""
+    class Meta:
+        managed = False
+        verbose_name = "AI Provider Configuration"
+        verbose_name_plural = "AI Provider Configuration"
+        app_label = 'collector'

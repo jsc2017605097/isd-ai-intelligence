@@ -24,7 +24,7 @@ function getLLMConfig() {
   const apiKey = process.env.AI_API_KEY || '';
   const model = process.env.CHAT_MODEL || process.env.AI_MODEL || 'qwen3:30b-a3b';
   
-  let baseUrl = process.env.LLM_BASE_URL || process.env.AI_BASE_URL || process.env.OLLAMA_BASE_URL || '';
+  let baseUrl = process.env.LLM_BASE_URL || process.env.AI_BASE_URL || '';
   let endpoint = '';
   let headers = { 'Content-Type': 'application/json' };
 
@@ -43,7 +43,8 @@ function getLLMConfig() {
     endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     headers['Authorization'] = `Bearer ${apiKey}`;
   } else if (provider === 'ollama') {
-    endpoint = (baseUrl.replace(/\/$/, '')) + '/api/chat';
+    const oBase = process.env.OLLAMA_BASE_URL || baseUrl || 'http://127.0.0.1:11434';
+    endpoint = (oBase.replace(/\/$/, '')) + '/api/chat';
   } else {
     // Default fallback
     endpoint = `${baseUrl}/v1/chat/completions`;

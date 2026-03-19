@@ -2,8 +2,18 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.contrib import messages
+from django.urls import path
+from django.shortcuts import render
+from django.http import HttpResponseRedirect
+import subprocess
+from pathlib import Path
 from collector.tasks import collect_data_from_all_sources
-from .models import Source, FetchLog, AILog, JobConfig, Article, SystemConfig, Team
+from .models import Source, FetchLog, AILog, JobConfig, Article, SystemConfig, Team, AISettings
+
+# Cấu hình đường dẫn cho Env
+NEWS_DIR = Path(__file__).resolve().parent.parent
+HUB_DIR = NEWS_DIR.parent / "isdnews-hub"
+BASE_DIR = NEWS_DIR.parent
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
@@ -183,6 +193,111 @@ class SystemConfigAdmin(admin.ModelAdmin):
         return obj.value
     get_masked_value.short_description = 'Value'
 
+def read_env(env_path):
+    config = {}
+    if env_path.exists():
+        for line in env_path.read_text(encoding='utf-8').splitlines():
+            if "=" in line:
+                k, v = line.split("=", 1)
+                config[k.strip()] = v.strip()
+    return config
+
+def write_env(env_path, updates):
+    if not env_path.parent.exists(): return
+    lines = env_path.read_text(encoding='utf-8').splitlines() if env_path.exists() else []
+    new_lines = []
+    seen = set()
+    for line in lines:
+        if "=" not in line: 
+            new_lines.append(line)
+            continue
+        k = line.split("=", 1)[0].strip()
+        if k in updates:
+            new_lines.append(f"{k}={updates[k]}")
+            seen.add(k)
+        else:
+            new_lines.append(line)
+    for k, v in updates.items():
+        if k not in seen:
+            new_lines.append(f"{k}={v}")
+    env_path.write_text("\n".join(new_lines), encoding='utf-8')
+
+@admin.register(AISettings)
+class AISettingsAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request): return False
+    def has_delete_permission(self, request, obj=None): return False
+        
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('', self.admin_site.admin_view(self.ai_settings_view), name="collector_aisettings_changelist")
+        ]
+        return custom_urls
+
+    def ai_settings_view(self, request):
+        env_news = NEWS_DIR / ".env"
+        env_hub = HUB_DIR / ".env"
+        
+        if request.method == "POST":
+            provider = request.POST.get("AI_PROVIDER", "").strip().lower()
+            ai_model = request.POST.get("AI_MODEL", "").strip()
+            api_key = request.POST.get("AI_API_KEY", "").strip()
+            ollama_url = request.POST.get("OLLAMA_BASE_URL", "").strip()
+            openai_url = request.POST.get("AI_BASE_URL", "").strip()
+            
+            updates = {
+                "AI_PROVIDER": provider,
+                "AI_MODEL": ai_model,
+            }
+            if provider == "ollama":
+                updates["OLLAMA_BASE_URL"] = ollama_url
+                updates["AI_AUTH_METHOD"] = "apikey"
+            else:
+                updates["AI_API_KEY"] = api_key
+                updates["AI_AUTH_METHOD"] = "apikey"
+                if provider == "openai" and openai_url:
+                    updates["AI_BASE_URL"] = openai_url
+                else:
+                    updates["AI_BASE_URL"] = ""
+
+            write_env(env_news, updates)
+            hub_updates = updates.copy()
+            
+            # Hub keys
+            hub_updates["CHAT_MODEL"] = ai_model
+            hub_updates["DIGEST_MODEL"] = ai_model
+            if provider == "openai":
+                hub_updates["LLM_BASE_URL"] = openai_url
+            else:
+                hub_updates["LLM_BASE_URL"] = ""
+                
+            write_env(env_hub, hub_updates)
+            
+            import os
+            for k, v in updates.items(): os.environ[k] = v
+            for k, v in hub_updates.items(): os.environ[k] = v
+            
+            try:
+                subprocess.run("pm2 restart all --update-env", shell=True, cwd=BASE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                messages.success(request, "Cấu hình AI đã được lưu thành công. Hệ thống PM2 đã tự động khởi động lại!")
+            except Exception as e:
+                messages.warning(request, f"Đã lưu file cấu hình nhưng lỗi khi restart PM2: {e}. Vui lòng chạy lệnh 'isd restart' bằng tay.")
+                
+            return HttpResponseRedirect(request.path)
+
+        config = read_env(env_news)
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Cấu hình AI Provider",
+            "config": config,
+            "opts": AISettings._meta,
+            "has_add_permission": False,
+            "has_change_permission": True,
+            "has_delete_permission": False,
+            "has_view_permission": True,
+        }
+        return render(request, "admin/ai_settings.html", context)
+
 def get_app_list(self, request, app_label=None):
     """Ty chnh th t hin th cc model trong admin"""
     app_dict = self._build_app_dict(request, app_label)
@@ -198,6 +313,7 @@ def get_app_list(self, request, app_label=None):
                 'AILog': 5,
                 'JobConfig': 6,
                 'SystemConfig': 7,
+                'AISettings': 8,
             }.get(x['object_name'], 10))
     return app_list
 
