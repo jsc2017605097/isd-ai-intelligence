@@ -206,16 +206,20 @@
       sources.slice(0,150).forEach(s=>{const o=document.createElement('option');o.value=s.source;o.textContent=s.source;sourceSel.appendChild(o);});
     }
 
-    async function loadTopics(){
-      const data = await fetch(api+'/api/topics/today').then(r=>r.json());
-      topicsBox.innerHTML='';
-      (data.topics||[]).slice(0,12).forEach(t=>{
-        const c=document.createElement('button');
-        c.className='chip';
-        c.textContent='#'+t.keyword;
-        c.onclick=()=>{document.getElementById('q').value=t.keyword; state.page=1; loadArticles();};
-        topicsBox.appendChild(c);
-      });
+    async function loadTopics() {
+      try {
+        const data = await fetch(api+'/api/topics/today').then(r=>r.ok?r.json():{topics:[]}).catch(e=>({topics:[]}));
+        topicsBox.innerHTML='';
+        (data.topics||[]).slice(0,12).forEach(t=>{
+          const c=document.createElement('button');
+          c.className='chip';
+          c.textContent='#'+t.keyword;
+          c.onclick=()=>{document.getElementById('q').value=t.keyword; state.page=1; loadArticles();};
+          topicsBox.appendChild(c);
+        });
+      } catch (e) {
+        console.error('loadTopics error', e);
+      }
     }
 
     function qParams(){
