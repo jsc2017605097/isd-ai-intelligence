@@ -24,7 +24,7 @@ function getLLMConfig() {
   const apiKey = process.env.AI_API_KEY || '';
   const model = process.env.CHAT_MODEL || process.env.AI_MODEL || 'qwen3:30b-a3b';
   
-  let baseUrl = process.env.LLM_BASE_URL || process.env.AI_BASE_URL || '';
+  let baseUrl = process.env.LLM_BASE_URL || process.env.AI_BASE_URL || process.env.OLLAMA_BASE_URL || '';
   let endpoint = '';
   let headers = { 'Content-Type': 'application/json' };
 
@@ -49,6 +49,7 @@ function getLLMConfig() {
     endpoint = `${baseUrl}/v1/chat/completions`;
   }
 
+  console.log('[DEBUG] getLLMConfig:', { provider, model, endpoint });
   return { provider, model, endpoint, headers };
 }
 
@@ -104,8 +105,8 @@ function buildArticleQuery(q) {
     params.search = `%${rawSearch}%`;
     where.push(phraseClause);
   }
-  if (q.team) { where.push('LOWER(t.code)=LOWER(@team)'); params.team = q.team; }
-  if (q.source) { where.push('LOWER(s.source)=LOWER(@source)'); params.source = q.source; }
+  if (q.team && q.team.toLowerCase() !== 'all') { where.push('LOWER(t.code)=LOWER(@team)'); params.team = q.team; }
+  if (q.source && q.source.toLowerCase() !== 'all') { where.push('LOWER(s.source)=LOWER(@source)'); params.source = q.source; }
   if (q.aiProcessed === 'true') where.push('a.is_ai_processed = 1');
   if (q.aiProcessed === 'false') where.push('a.is_ai_processed = 0');
   return { where: where.join(' AND '), params };
@@ -120,7 +121,7 @@ app.get('/api/articles', (req, res) => {
   const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize || '12', 10)));
   const { where, params } = buildArticleQuery(req.query);
   const baseFrom = `FROM collector_article a JOIN collector_source s ON s.id=a.source_id LEFT JOIN collector_team t ON t.id=s.team_id WHERE ${where}`;
-  const items = sourceDb.prepare(`SELECT a.id, a.title, a.summary, a.ai_content, a.is_ai_processed, a.published_at, a.thumbnail, s.source, t.code AS team_code ${baseFrom} ORDER BY a.published_at DESC LIMIT @limit OFFSET @offset`).all({ ...params, limit: pageSize, offset: (page-1)*pageSize });
+  const items = sourceDb.prepare(`SELECT a.id, a.title, a.summary, a.ai_content, a.is_ai_processed, a.published_at, a.thumbnail, s.source, t.code AS team_code ${baseFrom} ORDER BY a.id DESC LIMIT @limit OFFSET @offset`).all({ ...params, limit: pageSize, offset: (page-1)*pageSize });
   const total = sourceDb.prepare(`SELECT COUNT(*) AS c ${baseFrom}`).get(params).c;
   res.json({ page, pageSize, total, items });
 });
@@ -149,12 +150,16 @@ app.post('/api/chat/stream', async (req, res) => {
   let payload = {};
   if (provider === 'anthropic') {
     payload = { model, system: systemPrompt, messages, stream: true, max_tokens: 4096 };
+  } else if (provider === 'ollama') {
+    payload = { model, stream: true, messages: [{ role: 'system', content: systemPrompt }, ...messages] };
   } else {
     payload = { model, messages: [{ role: 'system', content: systemPrompt }, ...messages], stream: true };
   }
 
   try {
+    console.log('[DEBUG] Fetching LLM:', endpoint, 'Payload size:', JSON.stringify(payload).length);
     const upstream = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(payload) });
+    if (!upstream.ok) throw new Error(`HTTP ${upstream.status} - ${await upstream.text()}`);
     res.setHeader('Content-Type', 'text/event-stream');
     const reader = upstream.body.getReader();
     const decoder = new TextDecoder();
@@ -166,10 +171,11 @@ app.post('/api/chat/stream', async (req, res) => {
       for (const line of lines) {
         if (line.includes('[DONE]')) continue;
         try {
-          const jsonStr = line.replace(/^data: /, '');
+          const jsonStr = line.startsWith('data: ') ? line.substring(6) : line;
           const data = JSON.parse(jsonStr);
           let token = '';
           if (provider === 'anthropic') token = data.delta?.text || '';
+          else if (provider === 'ollama') token = data.message?.content || '';
           else token = data.choices?.[0]?.delta?.content || '';
           if (token) res.write(`data: ${JSON.stringify({ token })}\n\n`);
         } catch(e) {}
@@ -177,7 +183,13 @@ app.post('/api/chat/stream', async (req, res) => {
     }
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
-  } catch (e) { res.end(); }
+  } catch (e) { 
+    console.error('[ERROR] Chat stream error:', e);
+    // Nếu xảy ra lỗi giữa chừng hoặc ngay đầu, gửi lại token là lỗi cho frontend luôn
+    if (!res.headersSent) res.setHeader('Content-Type', 'text/event-stream');
+    res.write(`data: ${JSON.stringify({ error: e.message || 'Lỗi không xác định' })}\n\n`);
+    res.end(); 
+  }
 });
 
 app.use('/', express.static(path.resolve(__dirname, '../web/public')));
